@@ -1,5 +1,38 @@
 <script setup lang="ts">
+import { computed, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import AppLogo from '../../components/AppLogo.vue';
+import { getApiErrorMessage, login } from '../../auth/auth';
+
+const route = useRoute();
+const router = useRouter();
+const email = ref('');
+const password = ref('');
+const loading = ref(false);
+const errorMessage = ref('');
+const successMessage = computed(() =>
+  route.query.passwordChanged === '1'
+    ? 'Password berhasil diubah. Silakan masuk kembali.'
+    : '',
+);
+
+async function handleSubmit() {
+  loading.value = true;
+  errorMessage.value = '';
+
+  try {
+    await login(email.value, password.value);
+    const redirect =
+      typeof route.query.redirect === 'string'
+        ? route.query.redirect
+        : '/beranda';
+    await router.push(redirect);
+  } catch (error) {
+    errorMessage.value = getApiErrorMessage(error);
+  } finally {
+    loading.value = false;
+  }
+}
 </script>
 
 <template>
@@ -20,18 +53,30 @@ import AppLogo from '../../components/AppLogo.vue';
           </p>
         </div>
 
-        <form class="mt-7 space-y-5" @submit.prevent>
+        <div v-if="errorMessage" class="mt-5 rounded-lg bg-[#f7e8e7] px-4 py-3 text-sm text-danger">
+          {{ errorMessage }}
+        </div>
+        <div v-if="successMessage" class="mt-5 rounded-lg bg-[#e7f2ef] px-4 py-3 text-sm text-success">
+          {{ successMessage }}
+        </div>
+
+        <form class="mt-7 space-y-5" @submit.prevent="handleSubmit">
           <div>
             <label class="form-label" for="email">Email</label>
-            <input id="email" class="form-input" type="email" autocomplete="email" placeholder="nama@perusahaan.com" />
+            <input id="email" v-model="email" class="form-input" type="email" autocomplete="email" required placeholder="nama@perusahaan.com" />
           </div>
 
           <div>
             <label class="form-label" for="password">Password</label>
-            <input id="password" class="form-input" type="password" autocomplete="current-password" placeholder="Masukkan password" />
+            <input id="password" v-model="password" class="form-input" type="password" autocomplete="current-password" required placeholder="Masukkan password" />
+            <div class="mt-2 text-right">
+              <RouterLink class="text-sm font-medium text-primary-soft hover:text-primary hover:underline" to="/lupa-password">Lupa password?</RouterLink>
+            </div>
           </div>
 
-          <button class="primary-button w-full" type="submit">Masuk</button>
+          <button class="primary-button w-full" type="submit" :disabled="loading">
+            {{ loading ? 'Memproses...' : 'Masuk' }}
+          </button>
         </form>
       </section>
 

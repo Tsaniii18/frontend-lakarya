@@ -1,5 +1,52 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import AppLogo from '../../components/AppLogo.vue';
+import api from '../../lib/api';
+import { getApiErrorMessage } from '../../auth/auth';
+
+const employeeNumber = ref('');
+const name = ref('');
+const email = ref('');
+const department = ref('');
+const password = ref('');
+const repeatPassword = ref('');
+const loading = ref(false);
+const errorMessage = ref('');
+const successMessage = ref('');
+
+async function handleSubmit() {
+  errorMessage.value = '';
+  successMessage.value = '';
+
+  if (password.value !== repeatPassword.value) {
+    errorMessage.value = 'Ulangi password tidak sama.';
+    return;
+  }
+
+  loading.value = true;
+
+  try {
+    const { data } = await api.post<{ message: string }>('/auth/register', {
+      employeeNumber: employeeNumber.value,
+      name: name.value,
+      email: email.value,
+      department: department.value,
+      password: password.value,
+      repeatPassword: repeatPassword.value,
+    });
+    successMessage.value = data.message;
+    employeeNumber.value = '';
+    name.value = '';
+    email.value = '';
+    department.value = '';
+    password.value = '';
+    repeatPassword.value = '';
+  } catch (error) {
+    errorMessage.value = getApiErrorMessage(error);
+  } finally {
+    loading.value = false;
+  }
+}
 </script>
 
 <template>
@@ -20,44 +67,53 @@ import AppLogo from '../../components/AppLogo.vue';
           </p>
         </div>
 
-        <form class="mt-7 grid gap-5 sm:grid-cols-2" @submit.prevent>
+        <div v-if="errorMessage" class="mt-5 rounded-lg bg-[#f7e8e7] px-4 py-3 text-sm text-danger">
+          {{ errorMessage }}
+        </div>
+        <div v-if="successMessage" class="mt-5 rounded-lg bg-[#e7f2ef] px-4 py-3 text-sm text-success">
+          {{ successMessage }}
+        </div>
+
+        <form class="mt-7 grid gap-5 sm:grid-cols-2" @submit.prevent="handleSubmit">
           <div class="sm:col-span-2">
             <label class="form-label" for="employee-number">Nomor pegawai</label>
-            <input id="employee-number" class="form-input" type="text" autocomplete="off" placeholder="Masukkan nomor pegawai" />
+            <input id="employee-number" v-model="employeeNumber" class="form-input" type="text" autocomplete="off" required placeholder="Masukkan nomor pegawai" />
           </div>
 
           <div class="sm:col-span-2">
             <label class="form-label" for="name">Nama lengkap</label>
-            <input id="name" class="form-input" type="text" autocomplete="name" placeholder="Masukkan nama lengkap" />
+            <input id="name" v-model="name" class="form-input" type="text" autocomplete="name" required placeholder="Masukkan nama lengkap" />
           </div>
 
           <div class="sm:col-span-2">
             <label class="form-label" for="register-email">Email</label>
-            <input id="register-email" class="form-input" type="email" autocomplete="email" placeholder="nama@perusahaan.com" />
+            <input id="register-email" v-model="email" class="form-input" type="email" autocomplete="email" required placeholder="nama@perusahaan.com" />
           </div>
 
           <div class="sm:col-span-2">
             <label class="form-label" for="department">Departemen</label>
-            <select id="department" class="form-input bg-white">
+            <select id="department" v-model="department" class="form-input bg-white" required>
               <option value="">Pilih departemen</option>
-              <option>Human Resources</option>
-              <option>Finance</option>
-              <option>Information Technology</option>
-              <option>Marketing</option>
+              <option value="Human Resources">Human Resources</option>
+              <option value="Finance">Finance</option>
+              <option value="Information Technology">Information Technology</option>
+              <option value="Marketing">Marketing</option>
             </select>
           </div>
 
           <div>
             <label class="form-label" for="register-password">Password</label>
-            <input id="register-password" class="form-input" type="password" autocomplete="new-password" placeholder="Masukkan password" />
+            <input id="register-password" v-model="password" class="form-input" type="password" autocomplete="new-password" required placeholder="Masukkan password" />
           </div>
 
           <div>
             <label class="form-label" for="repeat-password">Ulangi password</label>
-            <input id="repeat-password" class="form-input" type="password" autocomplete="new-password" placeholder="Ulangi password" />
+            <input id="repeat-password" v-model="repeatPassword" class="form-input" type="password" autocomplete="new-password" required placeholder="Ulangi password" />
           </div>
 
-          <button class="primary-button w-full sm:col-span-2" type="submit">Daftar</button>
+          <button class="primary-button w-full sm:col-span-2" type="submit" :disabled="loading">
+            {{ loading ? 'Mendaftarkan...' : 'Daftar' }}
+          </button>
         </form>
       </section>
 

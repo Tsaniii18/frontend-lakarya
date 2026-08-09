@@ -128,7 +128,8 @@
 
   .status-info,
   .status-warning,
-  .status-success {
+  .status-success,
+  .status-danger {
     display: inline-flex;
     align-items: center;
     border-radius: 999px;
@@ -150,6 +151,11 @@
   .status-success {
     background: #e7f2ef;
     color: #2f7d6d;
+  }
+
+  .status-danger {
+    background: #fae9e8;
+    color: #b94a48;
   }
 
   .portal-nav-item {
