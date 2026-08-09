@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppLogo from '../../components/AppLogo.vue';
 import { getApiErrorMessage, login } from '../../auth/auth';
@@ -10,7 +10,7 @@ const email = ref('');
 const password = ref('');
 const loading = ref(false);
 const errorMessage = ref('');
-const successMessage = computed(() =>
+const successMessage = ref(
   route.query.passwordChanged === '1'
     ? 'Password berhasil diubah. Silakan masuk kembali.'
     : '',
@@ -56,8 +56,9 @@ async function handleSubmit() {
         <div v-if="errorMessage" class="mt-5 rounded-lg bg-[#f7e8e7] px-4 py-3 text-sm text-danger">
           {{ errorMessage }}
         </div>
-        <div v-if="successMessage" class="mt-5 rounded-lg bg-[#e7f2ef] px-4 py-3 text-sm text-success">
-          {{ successMessage }}
+        <div v-if="successMessage" class="mt-5 flex items-start justify-between gap-4 rounded-lg bg-[#e7f2ef] px-4 py-3 text-sm text-success" role="status">
+          <p>{{ successMessage }}</p>
+          <button class="shrink-0 text-lg leading-none" type="button" aria-label="Tutup pemberitahuan" @click="successMessage = ''">×</button>
         </div>
 
         <form class="mt-7 space-y-5" @submit.prevent="handleSubmit">

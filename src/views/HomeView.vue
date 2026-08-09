@@ -1,6 +1,26 @@
 <script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import AppSidebar from '../components/AppSidebar.vue';
-import { authState } from '../auth/auth';
+import { authState, getProfilePictureBlob } from '../auth/auth';
+
+const profilePictureUrl = ref('');
+
+onMounted(async () => {
+  if (!authState.user?.profilePictureUrl) return;
+
+  try {
+    const blob = await getProfilePictureBlob();
+    profilePictureUrl.value = URL.createObjectURL(blob);
+  } catch {
+    profilePictureUrl.value = '';
+  }
+});
+
+onBeforeUnmount(() => {
+  if (profilePictureUrl.value) {
+    URL.revokeObjectURL(profilePictureUrl.value);
+  }
+});
 </script>
 
 <template>
@@ -16,7 +36,13 @@ import { authState } from '../auth/auth';
         </div>
 
         <div class="flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2.5 sm:max-w-xs">
-          <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">
+          <img
+            v-if="profilePictureUrl"
+            class="h-10 w-10 shrink-0 rounded-full object-cover"
+            :src="profilePictureUrl"
+            :alt="`Foto profil ${authState.user?.name ?? ''}`"
+          />
+          <span v-else class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">
             {{ authState.user?.name?.charAt(0).toUpperCase() }}
           </span>
           <div class="min-w-0">
