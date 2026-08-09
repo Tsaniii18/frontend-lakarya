@@ -92,6 +92,11 @@ async function saveProfile() {
 async function changePassword() {
   passwordError.value = '';
 
+  if (newPassword.value.length < 6) {
+    passwordError.value = 'Password baru minimal 6 karakter.';
+    return;
+  }
+
   if (newPassword.value !== repeatNewPassword.value) {
     passwordError.value = 'Ulangi password baru tidak sama.';
     return;
@@ -198,11 +203,12 @@ onMounted(loadProfile);
             </div>
             <div>
               <label class="form-label" for="new-password">Password Baru</label>
-              <input id="new-password" v-model="newPassword" class="form-input" type="password" autocomplete="new-password" required />
+              <input id="new-password" v-model="newPassword" class="form-input" type="password" autocomplete="new-password" required minlength="6" />
+              <p class="mt-2 text-xs text-text-muted">Minimal 6 karakter.</p>
             </div>
             <div>
               <label class="form-label" for="repeat-new-password">Ulangi Password Baru</label>
-              <input id="repeat-new-password" v-model="repeatNewPassword" class="form-input" type="password" autocomplete="new-password" required />
+              <input id="repeat-new-password" v-model="repeatNewPassword" class="form-input" type="password" autocomplete="new-password" required minlength="6" />
             </div>
             <button class="primary-button w-full" type="submit" :disabled="passwordSaving">
               {{ passwordSaving ? 'Menyimpan...' : 'Ganti Password' }}

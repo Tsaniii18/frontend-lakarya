@@ -18,6 +18,11 @@ async function handleSubmit() {
   errorMessage.value = '';
   successMessage.value = '';
 
+  if (password.value.length < 6) {
+    errorMessage.value = 'Password minimal 6 karakter.';
+    return;
+  }
+
   if (password.value !== repeatPassword.value) {
     errorMessage.value = 'Ulangi password tidak sama.';
     return;
@@ -103,12 +108,13 @@ async function handleSubmit() {
 
           <div>
             <label class="form-label" for="register-password">Password</label>
-            <input id="register-password" v-model="password" class="form-input" type="password" autocomplete="new-password" required placeholder="Masukkan password" />
+            <input id="register-password" v-model="password" class="form-input" type="password" autocomplete="new-password" required minlength="6" placeholder="Masukkan password" />
+            <p class="mt-2 text-xs text-text-muted">Minimal 6 karakter.</p>
           </div>
 
           <div>
             <label class="form-label" for="repeat-password">Ulangi password</label>
-            <input id="repeat-password" v-model="repeatPassword" class="form-input" type="password" autocomplete="new-password" required placeholder="Ulangi password" />
+            <input id="repeat-password" v-model="repeatPassword" class="form-input" type="password" autocomplete="new-password" required minlength="6" placeholder="Ulangi password" />
           </div>
 
           <button class="primary-button w-full sm:col-span-2" type="submit" :disabled="loading">
