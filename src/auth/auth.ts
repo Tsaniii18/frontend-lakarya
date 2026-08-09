@@ -8,6 +8,7 @@ export interface AuthUser {
   name: string;
   email: string;
   accountStatus: string;
+  profilePictureUrl: string | null;
   department: {
     id: number;
     name: string;
@@ -84,6 +85,15 @@ export function getAuthHeaders() {
 export function setAuthUser(user: AuthUser) {
   authState.user = user;
   localStorage.setItem('lakarya_user', JSON.stringify(user));
+}
+
+export async function getProfilePictureBlob() {
+  const { data } = await api.get<Blob>('/users/profile/picture', {
+    headers: getAuthHeaders(),
+    responseType: 'blob',
+  });
+
+  return data;
 }
 
 export function getApiErrorMessage(error: unknown) {

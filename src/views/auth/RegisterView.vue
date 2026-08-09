@@ -75,8 +75,9 @@ async function handleSubmit() {
         <div v-if="errorMessage" class="mt-5 rounded-lg bg-[#f7e8e7] px-4 py-3 text-sm text-danger">
           {{ errorMessage }}
         </div>
-        <div v-if="successMessage" class="mt-5 rounded-lg bg-[#e7f2ef] px-4 py-3 text-sm text-success">
-          {{ successMessage }}
+        <div v-if="successMessage" class="mt-5 flex items-start justify-between gap-4 rounded-lg bg-[#e7f2ef] px-4 py-3 text-sm text-success" role="status">
+          <p>{{ successMessage }}</p>
+          <button class="shrink-0 text-lg leading-none" type="button" aria-label="Tutup pemberitahuan" @click="successMessage = ''">×</button>
         </div>
 
         <form class="mt-7 grid gap-5 sm:grid-cols-2" @submit.prevent="handleSubmit">
