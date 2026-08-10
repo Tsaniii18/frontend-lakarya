@@ -27,6 +27,14 @@ interface LeaveRequestDetail {
     mimeType: string;
     sizeByte: number;
   }>;
+  approvals: Array<{
+    id: number;
+    stepOrder: number;
+    status: 'MENUNGGU' | 'DISETUJUI' | 'DITOLAK';
+    reviewNote: string | null;
+    reviewedAt: string | null;
+    approver: { department: { name: string } };
+  }>;
 }
 
 const route = useRoute();
@@ -58,6 +66,12 @@ function formatDate(value: string) {
     month: 'long',
     year: 'numeric',
     timeZone: 'UTC',
+  }).format(new Date(value));
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   }).format(new Date(value));
 }
 
@@ -202,6 +216,18 @@ onMounted(loadDetail);
                 <button class="rounded-lg border border-primary-soft px-3 py-2 text-xs font-semibold text-primary-soft hover:bg-[#e9f0f7]" type="button" @click="previewAttachment(attachment.id)">Lihat</button>
               </div>
             </div>
+          </div>
+
+          <div class="mt-6 border-t border-border pt-6">
+            <h3 class="text-sm font-semibold text-primary">Proses Persetujuan</h3>
+            <p v-if="request.approvals.length === 0" class="mt-3 text-sm text-text-muted">{{ request.status === 'DISETUJUI' ? 'Pengajuan disetujui otomatis.' : 'Belum ada tahapan persetujuan.' }}</p>
+            <ol v-else class="mt-4">
+              <li v-for="(step, index) in request.approvals" :key="step.id" class="relative flex gap-3 pb-6 last:pb-0">
+                <span v-if="index < request.approvals.length - 1" class="absolute left-[9px] top-5 h-full w-px bg-border"></span>
+                <span class="relative z-10 mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold" :class="step.status === 'DISETUJUI' ? 'border-success bg-success text-white' : step.status === 'DITOLAK' ? 'border-danger bg-danger text-white' : 'border-primary-soft bg-white text-primary-soft'">{{ step.status === 'DISETUJUI' ? '✓' : step.status === 'DITOLAK' ? '×' : '○' }}</span>
+                <div><p class="text-sm font-semibold text-primary">{{ step.approver.department.name === 'Human Resources' ? 'HR Manager' : `Manager ${step.approver.department.name}` }}</p><p class="mt-1 text-xs" :class="step.status === 'DISETUJUI' ? 'text-success' : step.status === 'DITOLAK' ? 'text-danger' : 'text-text-muted'">{{ statusLabel(step.status) }}<span v-if="step.reviewedAt"> · {{ formatDateTime(step.reviewedAt) }}</span></p><p v-if="step.reviewNote" class="mt-2 text-xs leading-5 text-text-muted">“{{ step.reviewNote }}”</p></div>
+              </li>
+            </ol>
           </div>
         </section>
 
