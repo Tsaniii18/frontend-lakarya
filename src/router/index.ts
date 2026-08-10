@@ -12,6 +12,10 @@ import LeaveFormView from '../views/requests/LeaveFormView.vue';
 import LeaveDetailView from '../views/requests/LeaveDetailView.vue';
 import PermissionFormView from '../views/requests/PermissionFormView.vue';
 import PermissionDetailView from '../views/requests/PermissionDetailView.vue';
+import ApprovalInboxView from '../views/approvals/ApprovalInboxView.vue';
+import ApprovalDetailView from '../views/approvals/ApprovalDetailView.vue';
+import RequestManagementView from '../views/hr/RequestManagementView.vue';
+import ManagedRequestDetailView from '../views/hr/ManagedRequestDetailView.vue';
 import { authState } from '../auth/auth';
 
 const router = createRouter({
@@ -83,9 +87,33 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/persetujuan',
+      name: 'approvals',
+      component: ApprovalInboxView,
+      meta: { requiresAuth: true, requiresManager: true },
+    },
+    {
+      path: '/persetujuan/:id',
+      name: 'approval-detail',
+      component: ApprovalDetailView,
+      meta: { requiresAuth: true, requiresManager: true },
+    },
+    {
       path: '/kelola-pengguna',
       name: 'user-management',
       component: UserManagementView,
+      meta: { requiresAuth: true, requiresHr: true },
+    },
+    {
+      path: '/kelola-pengajuan',
+      name: 'request-management',
+      component: RequestManagementView,
+      meta: { requiresAuth: true, requiresHr: true },
+    },
+    {
+      path: '/kelola-pengajuan/:id',
+      name: 'managed-request-detail',
+      component: ManagedRequestDetailView,
       meta: { requiresAuth: true, requiresHr: true },
     },
     {
@@ -107,6 +135,13 @@ router.beforeEach((to) => {
   }
 
   if (to.meta.guestOnly && authState.token) {
+    return { name: 'home' };
+  }
+
+  if (
+    to.meta.requiresManager &&
+    authState.user?.role !== 'MANAJER'
+  ) {
     return { name: 'home' };
   }
 
