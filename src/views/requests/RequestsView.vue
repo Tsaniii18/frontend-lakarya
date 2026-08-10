@@ -29,6 +29,12 @@ interface RequestItem {
     endTime: string | null;
     reason: string;
   } | null;
+  reimbursementRequest?: {
+    expenseType: 'TRANSPORTASI' | 'KONSUMSI' | 'OPERASIONAL' | 'LAINNYA';
+    expenseDate: string;
+    expenseAmount: number | string;
+    description: string;
+  } | null;
 }
 
 interface RequestListResponse {
@@ -109,6 +115,9 @@ function summary(request: RequestItem) {
   if (request.permissionRequest) {
     return `${formatDate(request.permissionRequest.startDate)} · ${formatTime(request.permissionRequest.startTime)}–${formatTime(request.permissionRequest.endTime)}`;
   }
+  if (request.reimbursementRequest) {
+    return formatDate(request.reimbursementRequest.expenseDate);
+  }
   return `Diajukan ${formatDate(request.createdAt)}`;
 }
 
@@ -143,6 +152,9 @@ function openDetail(request: RequestItem) {
   }
   if (request.type === 'IZIN') {
     void router.push(`/pengajuan/izin/${request.id}`);
+  }
+  if (request.type === 'PENGGANTIAN_BIAYA') {
+    void router.push(`/pengajuan/reimbursement/${request.id}`);
   }
 }
 
@@ -192,13 +204,12 @@ onMounted(loadRequests);
                 </span>
                 <span><span class="block text-sm font-semibold text-primary">Izin</span><span class="mt-0.5 block text-xs text-text-muted">Harian atau per jam</span></span>
               </RouterLink>
-              <div class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 opacity-60" aria-disabled="true" role="menuitem">
+              <RouterLink class="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-surface-soft" to="/pengajuan/reimbursement/baru" role="menuitem">
                 <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#f8efdf] text-warning">
                   <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2" /><path d="M8 10h8M8 14h5" /></svg>
                 </span>
                 <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-primary">Reimbursement</span><span class="mt-0.5 block text-xs text-text-muted">Penggantian biaya</span></span>
-                <span class="status-warning">Segera</span>
-              </div>
+              </RouterLink>
             </div>
           </div>
         </div>
@@ -270,14 +281,12 @@ onMounted(loadRequests);
                   <td class="px-4 py-4"><span :class="statusClass(request.status)">{{ statusLabel(request.status) }}</span></td>
                   <td class="px-4 py-4 text-right">
                     <button
-                      v-if="request.type === 'CUTI' || request.type === 'IZIN'"
                       class="rounded-lg border border-primary-soft px-3 py-2 text-xs font-semibold text-primary-soft hover:bg-[#e9f0f7]"
                       type="button"
                       @click="openDetail(request)"
                     >
                       Lihat detail
                     </button>
-                    <span v-else class="text-xs text-text-muted">—</span>
                   </td>
                 </tr>
               </template>

@@ -15,6 +15,11 @@ const isHrManager = computed(
     authState.user.department.name === 'Human Resources',
 );
 const isManager = computed(() => authState.user?.role === 'MANAJER');
+const isFinanceManager = computed(
+  () =>
+    authState.user?.role === 'MANAJER' &&
+    authState.user.department.name === 'Finance',
+);
 
 function toggleCollapsed() {
   collapsed.value = !collapsed.value;
@@ -183,6 +188,23 @@ watch(
           <rect x="3" y="2" width="18" height="20" rx="2" />
         </svg>
         <span :class="{ 'md:hidden': collapsed }">Kelola Pengajuan</span>
+      </RouterLink>
+
+      <RouterLink
+        v-if="isFinanceManager"
+        class="portal-nav-item flex items-center gap-3"
+        :class="[
+          { 'portal-nav-item-active': route.path.startsWith('/kelola-reimbursement') },
+          collapsed ? 'md:justify-center md:px-0' : '',
+        ]"
+        to="/kelola-reimbursement"
+        title="Kelola Reimbursement"
+      >
+        <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <rect x="3.5" y="5" width="17" height="14" rx="2" />
+          <path d="M7 10h10M7 14h6" />
+        </svg>
+        <span :class="{ 'md:hidden': collapsed }">Kelola Reimbursement</span>
       </RouterLink>
 
       <RouterLink

@@ -12,10 +12,14 @@ import LeaveFormView from '../views/requests/LeaveFormView.vue';
 import LeaveDetailView from '../views/requests/LeaveDetailView.vue';
 import PermissionFormView from '../views/requests/PermissionFormView.vue';
 import PermissionDetailView from '../views/requests/PermissionDetailView.vue';
+import ReimbursementFormView from '../views/requests/ReimbursementFormView.vue';
+import ReimbursementDetailView from '../views/requests/ReimbursementDetailView.vue';
 import ApprovalInboxView from '../views/approvals/ApprovalInboxView.vue';
 import ApprovalDetailView from '../views/approvals/ApprovalDetailView.vue';
 import RequestManagementView from '../views/hr/RequestManagementView.vue';
 import ManagedRequestDetailView from '../views/hr/ManagedRequestDetailView.vue';
+import ReimbursementManagementView from '../views/finance/ReimbursementManagementView.vue';
+import ManagedReimbursementDetailView from '../views/finance/ManagedReimbursementDetailView.vue';
 import { authState } from '../auth/auth';
 
 const router = createRouter({
@@ -87,6 +91,18 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/pengajuan/reimbursement/baru',
+      name: 'reimbursement-create',
+      component: ReimbursementFormView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/pengajuan/reimbursement/:id',
+      name: 'reimbursement-detail',
+      component: ReimbursementDetailView,
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/persetujuan',
       name: 'approvals',
       component: ApprovalInboxView,
@@ -115,6 +131,18 @@ const router = createRouter({
       name: 'managed-request-detail',
       component: ManagedRequestDetailView,
       meta: { requiresAuth: true, requiresHr: true },
+    },
+    {
+      path: '/kelola-reimbursement',
+      name: 'reimbursement-management',
+      component: ReimbursementManagementView,
+      meta: { requiresAuth: true, requiresFinance: true },
+    },
+    {
+      path: '/kelola-reimbursement/:id',
+      name: 'managed-reimbursement-detail',
+      component: ManagedReimbursementDetailView,
+      meta: { requiresAuth: true, requiresFinance: true },
     },
     {
       path: '/profil',
@@ -149,6 +177,14 @@ router.beforeEach((to) => {
     to.meta.requiresHr &&
     (authState.user?.role !== 'MANAJER' ||
       authState.user.department.name !== 'Human Resources')
+  ) {
+    return { name: 'home' };
+  }
+
+  if (
+    to.meta.requiresFinance &&
+    (authState.user?.role !== 'MANAJER' ||
+      authState.user.department.name !== 'Finance')
   ) {
     return { name: 'home' };
   }

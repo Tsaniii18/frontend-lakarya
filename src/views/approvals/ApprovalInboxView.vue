@@ -12,7 +12,7 @@ interface ApprovalItem {
   canProcess: boolean;
   request: {
     id: number;
-    type: 'CUTI' | 'IZIN';
+    type: 'CUTI' | 'IZIN' | 'PENGGANTIAN_BIAYA';
     createdAt: string;
     requester: {
       name: string;
@@ -20,6 +20,7 @@ interface ApprovalItem {
     };
     leaveRequest: { leaveType: 'TAHUNAN' | 'KHUSUS' } | null;
     permissionRequest: { permissionType: 'HARIAN' | 'JAM' } | null;
+    reimbursementRequest: { expenseType: 'TRANSPORTASI' | 'KONSUMSI' | 'OPERASIONAL' | 'LAINNYA' } | null;
   };
 }
 
@@ -44,6 +45,7 @@ function requestLabel(item: ApprovalItem) {
   if (item.request.leaveRequest) {
     return item.request.leaveRequest.leaveType === 'TAHUNAN' ? 'Cuti Tahunan' : 'Cuti Khusus';
   }
+  if (item.request.reimbursementRequest) return 'Penggantian Biaya';
   return item.request.permissionRequest?.permissionType === 'HARIAN' ? 'Izin Harian' : 'Izin Per Jam';
 }
 
