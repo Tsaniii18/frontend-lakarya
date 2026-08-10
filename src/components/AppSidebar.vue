@@ -8,6 +8,15 @@ const route = useRoute();
 const router = useRouter();
 const collapsed = ref(localStorage.getItem('lakarya_sidebar_collapsed') === '1');
 const mobileOpen = ref(false);
+const hrMenuOpen = ref(
+  route.path.startsWith('/persetujuan') ||
+    route.path.startsWith('/kelola-pengajuan') ||
+    route.path === '/kelola-pengguna',
+);
+const financeMenuOpen = ref(
+  route.path.startsWith('/persetujuan') ||
+    route.path.startsWith('/kelola-reimbursement'),
+);
 
 const isHrManager = computed(
   () =>
@@ -19,6 +28,9 @@ const isFinanceManager = computed(
   () =>
     authState.user?.role === 'MANAJER' &&
     authState.user.department.name === 'Finance',
+);
+const isDepartmentManager = computed(
+  () => isManager.value && !isHrManager.value && !isFinanceManager.value,
 );
 
 function toggleCollapsed() {
@@ -33,8 +45,21 @@ async function handleLogout() {
 
 watch(
   () => route.path,
-  () => {
+  (path) => {
     mobileOpen.value = false;
+    if (
+      path.startsWith('/persetujuan') ||
+      path.startsWith('/kelola-pengajuan') ||
+      path === '/kelola-pengguna'
+    ) {
+      hrMenuOpen.value = true;
+    }
+    if (
+      path.startsWith('/persetujuan') ||
+      path.startsWith('/kelola-reimbursement')
+    ) {
+      financeMenuOpen.value = true;
+    }
   },
 );
 </script>
@@ -133,96 +158,120 @@ watch(
           collapsed ? 'md:justify-center md:px-0' : '',
         ]"
         to="/pengajuan"
-        title="Pengajuan"
+        title="Pengajuan Saya"
       >
         <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
           <path d="M7 3v3M17 3v3M4 9h16" />
           <rect x="4" y="5" width="16" height="15" rx="2" />
         </svg>
-        <span :class="{ 'md:hidden': collapsed }">Pengajuan</span>
+        <span :class="{ 'md:hidden': collapsed }">Pengajuan Saya</span>
       </RouterLink>
 
       <div
         class="portal-nav-item flex items-center gap-3"
         :class="collapsed ? 'md:justify-center md:px-0' : ''"
         aria-disabled="true"
-        title="Keluhan"
+        title="Keluhan Saya"
       >
         <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
           <path d="M5 18.5 3.5 21l4-1.2a9 9 0 1 0-2.5-1.3Z" />
           <path d="M12 8v4M12 15.5h.01" />
         </svg>
-        <span :class="{ 'md:hidden': collapsed }">Keluhan</span>
+        <span :class="{ 'md:hidden': collapsed }">Keluhan Saya</span>
       </div>
 
       <RouterLink
-        v-if="isManager"
+        v-if="isDepartmentManager"
         class="portal-nav-item flex items-center gap-3"
         :class="[
           { 'portal-nav-item-active': route.path.startsWith('/persetujuan') },
           collapsed ? 'md:justify-center md:px-0' : '',
         ]"
         to="/persetujuan"
-        title="Persetujuan"
+        title="Pengajuan Masuk"
       >
         <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
           <path d="m5 12 4 4L19 6" />
           <rect x="3.5" y="3.5" width="17" height="17" rx="3" />
         </svg>
-        <span :class="{ 'md:hidden': collapsed }">Persetujuan</span>
+        <span :class="{ 'md:hidden': collapsed }">Pengajuan Masuk</span>
       </RouterLink>
 
-      <RouterLink
-        v-if="isHrManager"
-        class="portal-nav-item flex items-center gap-3"
-        :class="[
-          { 'portal-nav-item-active': route.path.startsWith('/kelola-pengajuan') },
-          collapsed ? 'md:justify-center md:px-0' : '',
-        ]"
-        to="/kelola-pengajuan"
-        title="Kelola Pengajuan"
-      >
-        <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-          <path d="M7 4h10M7 9h10M7 14h6" />
-          <path d="m15 18 2 2 4-5" />
-          <rect x="3" y="2" width="18" height="20" rx="2" />
-        </svg>
-        <span :class="{ 'md:hidden': collapsed }">Kelola Pengajuan</span>
-      </RouterLink>
+      <div v-if="isHrManager">
+        <button
+          class="portal-nav-item flex w-full items-center gap-3 text-left"
+          :class="[
+            {
+              'portal-nav-item-active':
+                route.path.startsWith('/persetujuan') ||
+                route.path.startsWith('/kelola-pengajuan') ||
+                route.path === '/kelola-pengguna',
+            },
+            collapsed ? 'md:justify-center md:px-0' : '',
+          ]"
+          type="button"
+          title="Kelola HR"
+          :aria-expanded="hrMenuOpen"
+          aria-controls="hr-management-menu"
+          @click="hrMenuOpen = !hrMenuOpen"
+        >
+          <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M4 7.5h16M7 3.5v4M17 3.5v4" />
+            <rect x="4" y="5" width="16" height="15" rx="2" />
+            <path d="M8 12h3M8 16h5" />
+          </svg>
+          <span class="min-w-0 flex-1" :class="{ 'md:hidden': collapsed }">Kelola HR</span>
+          <svg class="h-4 w-4 shrink-0 transition-transform" :class="[{ 'rotate-180': hrMenuOpen }, { 'md:hidden': collapsed }]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+        </button>
 
-      <RouterLink
-        v-if="isFinanceManager"
-        class="portal-nav-item flex items-center gap-3"
-        :class="[
-          { 'portal-nav-item-active': route.path.startsWith('/kelola-reimbursement') },
-          collapsed ? 'md:justify-center md:px-0' : '',
-        ]"
-        to="/kelola-reimbursement"
-        title="Kelola Reimbursement"
-      >
-        <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-          <rect x="3.5" y="5" width="17" height="14" rx="2" />
-          <path d="M7 10h10M7 14h6" />
-        </svg>
-        <span :class="{ 'md:hidden': collapsed }">Kelola Reimbursement</span>
-      </RouterLink>
+        <div
+          v-if="hrMenuOpen"
+          id="hr-management-menu"
+          class="ml-4 mt-1 space-y-1 border-l border-white/15 pl-3"
+          :class="{ 'md:ml-0 md:border-l-0 md:pl-0': collapsed }"
+        >
+          <RouterLink class="portal-nav-item flex items-center gap-3 py-2" :class="[{ 'portal-nav-item-active': route.path.startsWith('/persetujuan') }, collapsed ? 'md:justify-center md:px-0' : '']" to="/persetujuan" title="Pengajuan Masuk"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-current"></span><span :class="{ 'md:hidden': collapsed }">Pengajuan Masuk</span></RouterLink>
+          <RouterLink class="portal-nav-item flex items-center gap-3 py-2" :class="[{ 'portal-nav-item-active': route.path.startsWith('/kelola-pengajuan') }, collapsed ? 'md:justify-center md:px-0' : '']" to="/kelola-pengajuan" title="Daftar Pengajuan"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-current"></span><span :class="{ 'md:hidden': collapsed }">Daftar Pengajuan</span></RouterLink>
+          <RouterLink class="portal-nav-item flex items-center gap-3 py-2" :class="[{ 'portal-nav-item-active': route.path === '/kelola-pengguna' }, collapsed ? 'md:justify-center md:px-0' : '']" to="/kelola-pengguna" title="Daftar Pengguna"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-current"></span><span :class="{ 'md:hidden': collapsed }">Daftar Pengguna</span></RouterLink>
+          <div class="portal-nav-item flex cursor-default items-center gap-3 py-2" :class="collapsed ? 'md:justify-center md:px-0' : ''" aria-disabled="true" title="Keluhan Masuk"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-current"></span><span :class="{ 'md:hidden': collapsed }">Keluhan Masuk</span></div>
+        </div>
+      </div>
 
-      <RouterLink
-        v-if="isHrManager"
-        class="portal-nav-item flex items-center gap-3"
-        :class="[
-          { 'portal-nav-item-active': route.path === '/kelola-pengguna' },
-          collapsed ? 'md:justify-center md:px-0' : '',
-        ]"
-        to="/kelola-pengguna"
-        title="Kelola Pengguna"
-      >
-        <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-          <circle cx="9" cy="8" r="3" />
-          <path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 7h5M18.5 4.5v5" />
-        </svg>
-        <span :class="{ 'md:hidden': collapsed }">Kelola Pengguna</span>
-      </RouterLink>
+      <div v-if="isFinanceManager">
+        <button
+          class="portal-nav-item flex w-full items-center gap-3 text-left"
+          :class="[
+            {
+              'portal-nav-item-active':
+                route.path.startsWith('/persetujuan') ||
+                route.path.startsWith('/kelola-reimbursement'),
+            },
+            collapsed ? 'md:justify-center md:px-0' : '',
+          ]"
+          type="button"
+          title="Kelola Keuangan"
+          :aria-expanded="financeMenuOpen"
+          aria-controls="finance-management-menu"
+          @click="financeMenuOpen = !financeMenuOpen"
+        >
+          <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <rect x="3.5" y="5" width="17" height="14" rx="2" />
+            <path d="M7 10h10M7 14h6" />
+          </svg>
+          <span class="min-w-0 flex-1" :class="{ 'md:hidden': collapsed }">Kelola Keuangan</span>
+          <svg class="h-4 w-4 shrink-0 transition-transform" :class="[{ 'rotate-180': financeMenuOpen }, { 'md:hidden': collapsed }]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+        </button>
+
+        <div
+          v-if="financeMenuOpen"
+          id="finance-management-menu"
+          class="ml-4 mt-1 space-y-1 border-l border-white/15 pl-3"
+          :class="{ 'md:ml-0 md:border-l-0 md:pl-0': collapsed }"
+        >
+          <RouterLink class="portal-nav-item flex items-center gap-3 py-2" :class="[{ 'portal-nav-item-active': route.path.startsWith('/persetujuan') }, collapsed ? 'md:justify-center md:px-0' : '']" to="/persetujuan" title="Pengajuan Masuk"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-current"></span><span :class="{ 'md:hidden': collapsed }">Pengajuan Masuk</span></RouterLink>
+          <RouterLink class="portal-nav-item flex items-center gap-3 py-2" :class="[{ 'portal-nav-item-active': route.path.startsWith('/kelola-reimbursement') }, collapsed ? 'md:justify-center md:px-0' : '']" to="/kelola-reimbursement" title="Reimbursement"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-current"></span><span :class="{ 'md:hidden': collapsed }">Reimbursement</span></RouterLink>
+        </div>
+      </div>
 
       <RouterLink
         class="portal-nav-item flex items-center gap-3"

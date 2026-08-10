@@ -172,10 +172,120 @@
     background: rgb(255 255 255 / 0.12);
     color: white;
   }
+
+  .data-card {
+    margin-top: 1.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 1rem;
+    background: var(--color-surface);
+    padding: 1.25rem;
+  }
+
+  .data-card-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .data-count {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    background: #e9f0f7;
+    padding: 0.35rem 0.7rem;
+    color: var(--color-primary-soft);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .data-table-shell {
+    margin-top: 1.25rem;
+    overflow-x: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 0.875rem;
+  }
+
+  .data-table thead {
+    background: var(--color-surface-soft);
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .data-table th {
+    padding: 0.8rem 1rem;
+  }
+
+  .data-table td {
+    padding: 1rem;
+  }
+
+  .data-table tbody {
+    border-color: var(--color-border);
+  }
+
+  .data-table tbody tr {
+    border-top: 1px solid var(--color-border);
+    transition: background-color 180ms ease;
+  }
+
+  .data-table tbody tr:first-child {
+    border-top: 0;
+  }
+
+  .data-table tbody tr:not(.data-state-row):hover {
+    background: var(--color-surface-soft);
+  }
+
+  .table-action-link {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-primary-soft);
+    border-radius: 8px;
+    padding: 0.45rem 0.75rem;
+    color: var(--color-primary-soft);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .table-action-link:hover {
+    background: #e9f0f7;
+    color: var(--color-primary);
+  }
+
+  .data-pagination {
+    margin-top: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+  }
 }
 
 @media (min-width: 640px) {
   .page-shell {
     width: min(1180px, calc(100% - 64px));
+  }
+
+  .data-card {
+    padding: 1.5rem;
+  }
+
+  .data-pagination {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
   }
 }
