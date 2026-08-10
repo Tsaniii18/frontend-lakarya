@@ -18,6 +18,16 @@ const form = reactive({
 const submitting = ref(false);
 const errorMessage = ref('');
 const fieldError = ref('');
+const selectedFiles = ref<File[]>([]);
+const attachmentError = ref('');
+const createdRequestId = ref<number | null>(null);
+const uploadedFileCount = ref(0);
+const allowedAttachmentTypes = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+];
 const today = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Jakarta',
   year: 'numeric',
@@ -51,6 +61,51 @@ function formatSelectedDate(value: string) {
     year: 'numeric',
     timeZone: 'UTC',
   }).format(new Date(`${value}T00:00:00.000Z`));
+}
+
+function formatFileSize(size: number) {
+  return size >= 1024 * 1024
+    ? `${(size / (1024 * 1024)).toFixed(1)} MB`
+    : `${Math.ceil(size / 1024)} KB`;
+}
+
+function handleFile(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const files = Array.from(input.files ?? []);
+  attachmentError.value = '';
+  input.value = '';
+
+  if (files.length === 0) return;
+  if (uploadedFileCount.value + selectedFiles.value.length + files.length > 3) {
+    attachmentError.value = 'Setiap pengajuan hanya dapat memiliki maksimal 3 lampiran.';
+    return;
+  }
+  const invalidType = files.find(
+    (file) => !allowedAttachmentTypes.includes(file.type),
+  );
+  if (invalidType) {
+    attachmentError.value = `${invalidType.name}: format harus PDF, JPEG, PNG, atau WebP.`;
+    return;
+  }
+  const oversizedFile = files.find((file) => file.size > 2 * 1024 * 1024);
+  if (oversizedFile) {
+    attachmentError.value = `${oversizedFile.name}: ukuran maksimal 2 MB.`;
+    return;
+  }
+  selectedFiles.value.push(...files);
+}
+
+function removeFile(index: number) {
+  selectedFiles.value.splice(index, 1);
+  attachmentError.value = '';
+}
+
+async function uploadAttachment(requestId: number, file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  await api.post(`/requests/${requestId}/attachments`, formData, {
+    headers: getAuthHeaders(),
+  });
 }
 
 function validateForm() {
@@ -93,9 +148,10 @@ function validateForm() {
 }
 
 async function submit() {
-  if (!validateForm()) return;
+  if (!validateForm() || attachmentError.value) return;
   submitting.value = true;
   errorMessage.value = '';
+  let requestId = createdRequestId.value;
 
   const isDaily = form.permissionType === 'HARIAN';
   const payload = {
@@ -108,14 +164,27 @@ async function submit() {
   };
 
   try {
-    const { data } = await api.post<{ request: { id: number } }>(
-      '/permission',
-      payload,
-      { headers: getAuthHeaders() },
-    );
-    await router.push(`/pengajuan/izin/${data.request.id}`);
+    if (requestId === null) {
+      const { data } = await api.post<{ request: { id: number } }>(
+        '/permission',
+        payload,
+        { headers: getAuthHeaders() },
+      );
+      requestId = data.request.id;
+      createdRequestId.value = requestId;
+    }
+
+    while (selectedFiles.value.length > 0) {
+      await uploadAttachment(requestId, selectedFiles.value[0]);
+      selectedFiles.value.shift();
+      uploadedFileCount.value += 1;
+    }
+    await router.push(`/pengajuan/izin/${requestId}`);
   } catch (error) {
-    errorMessage.value = getApiErrorMessage(error);
+    const message = getApiErrorMessage(error);
+    errorMessage.value = createdRequestId.value
+      ? `Pengajuan sudah dibuat, tetapi lampiran gagal diunggah. ${message}`
+      : message;
   } finally {
     submitting.value = false;
   }
@@ -204,6 +273,28 @@ watch(
           <span class="form-label">Alasan</span>
           <textarea v-model="form.reason" class="form-input min-h-32 resize-y" placeholder="Jelaskan keperluan izin Anda" required></textarea>
         </label>
+
+        <div class="mt-5">
+          <label class="form-label" for="permission-attachment">Lampiran <span class="font-normal text-text-muted">(opsional)</span></label>
+          <div class="flex flex-col gap-3 rounded-xl border border-dashed border-border-strong bg-surface-soft p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex items-start gap-3">
+              <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#e9f0f7] text-primary-soft">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 16V4M8 8l4-4 4 4" /><path d="M5 13v6h14v-6" /></svg>
+              </span>
+              <div><p class="text-sm font-medium text-text">Tambahkan lampiran pendukung</p><p class="mt-1 text-xs leading-5 text-text-muted">Maksimal 3 file. PDF, JPEG, PNG, atau WebP, masing-masing 2 MB.</p></div>
+            </div>
+            <label v-if="uploadedFileCount + selectedFiles.length < 3" class="secondary-button shrink-0 cursor-pointer" for="permission-attachment">{{ selectedFiles.length ? 'Tambah File' : 'Pilih File' }}</label>
+            <span v-else class="text-xs font-semibold text-text-muted">Maksimal tercapai</span>
+            <input id="permission-attachment" class="sr-only" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple @change="handleFile" />
+          </div>
+          <p v-if="attachmentError" class="mt-2 text-sm text-danger" role="alert">{{ attachmentError }}</p>
+          <div v-if="selectedFiles.length" class="mt-3 divide-y divide-border rounded-xl border border-border bg-surface-soft">
+            <div v-for="(file, index) in selectedFiles" :key="`${file.name}-${file.lastModified}`" class="flex items-center justify-between gap-3 px-4 py-3">
+              <div class="min-w-0"><p class="truncate text-sm font-medium text-text">{{ file.name }}</p><p class="mt-1 text-xs text-text-muted">{{ file.type }} · {{ formatFileSize(file.size) }}</p></div>
+              <button class="shrink-0 text-xs font-semibold text-danger hover:text-[#9f3f3d]" type="button" @click="removeFile(index)">Hapus</button>
+            </div>
+          </div>
+        </div>
 
         <p v-if="fieldError" class="mt-4 text-sm text-danger" role="alert">{{ fieldError }}</p>
 

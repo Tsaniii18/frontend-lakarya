@@ -22,6 +22,13 @@ interface PermissionRequestDetail {
     endTime: string | null;
     reason: string;
   };
+  attachments: Array<{
+    id: number;
+    fileUrl: string;
+    fileName: string;
+    mimeType: string;
+    sizeByte: number;
+  }>;
 }
 
 const route = useRoute();
@@ -64,6 +71,41 @@ function formatTime(value: string | null) {
     hour12: false,
     timeZone: 'UTC',
   }).format(new Date(value));
+}
+
+function formatFileSize(size: number) {
+  return size >= 1024 * 1024
+    ? `${(size / (1024 * 1024)).toFixed(1)} MB`
+    : `${Math.ceil(size / 1024)} KB`;
+}
+
+function fileTypeLabel(mimeType: string) {
+  if (mimeType === 'application/pdf') return 'PDF';
+  return 'Gambar';
+}
+
+async function previewAttachment(attachmentId: number) {
+  if (!request.value) return;
+  errorMessage.value = '';
+
+  try {
+    const { data } = await api.get<Blob>(
+      `/requests/${request.value.id}/attachments/${attachmentId}`,
+      {
+        headers: getAuthHeaders(),
+        responseType: 'blob',
+      },
+    );
+    const objectUrl = URL.createObjectURL(data);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+  } catch (error) {
+    errorMessage.value = getApiErrorMessage(error);
+  }
 }
 
 async function loadDetail() {
@@ -150,6 +192,17 @@ onMounted(loadDetail);
           </dl>
 
           <div class="mt-6"><p class="text-xs font-medium uppercase tracking-wide text-text-muted">Alasan Pengajuan</p><p class="mt-2 rounded-xl bg-surface-soft px-4 py-3.5 whitespace-pre-wrap text-sm leading-6 text-text">{{ request.permissionRequest.reason }}</p></div>
+
+          <div class="mt-6 border-t border-border pt-6">
+            <h3 class="text-sm font-semibold text-primary">Lampiran</h3>
+            <p v-if="request.attachments.length === 0" class="mt-3 text-sm text-text-muted">Tidak ada lampiran.</p>
+            <div v-else class="mt-3 divide-y divide-border rounded-xl border border-border">
+              <div v-for="attachment in request.attachments" :key="attachment.id" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <div class="min-w-0"><p class="truncate text-sm font-medium text-text">{{ attachment.fileName }}</p><p class="mt-1 text-xs text-text-muted">{{ fileTypeLabel(attachment.mimeType) }} · {{ formatFileSize(attachment.sizeByte) }}</p></div>
+                <button class="rounded-lg border border-primary-soft px-3 py-2 text-xs font-semibold text-primary-soft hover:bg-[#e9f0f7]" type="button" @click="previewAttachment(attachment.id)">Lihat</button>
+              </div>
+            </div>
+          </div>
         </section>
 
         <aside class="h-fit rounded-2xl border border-border bg-surface p-5 sm:p-6">
