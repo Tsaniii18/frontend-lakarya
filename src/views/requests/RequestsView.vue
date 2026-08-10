@@ -215,8 +215,12 @@ onMounted(loadRequests);
         </div>
       </header>
 
-      <section class="mt-7 rounded-2xl border border-border bg-surface p-5 sm:p-6">
-        <div class="grid gap-3 md:grid-cols-3">
+      <section class="data-card">
+        <div class="data-card-heading">
+          <div><h2 class="text-base font-semibold text-primary">Riwayat Pengajuan</h2><p class="mt-1 text-sm text-text-muted">Temukan pengajuan berdasarkan jenis, status, atau waktu pengajuan.</p></div>
+          <span class="data-count">{{ meta.total }} pengajuan</span>
+        </div>
+        <div class="mt-5 grid gap-3 md:grid-cols-3">
           <label>
             <span class="form-label">Jenis</span>
             <select v-model="type" class="form-input">
@@ -249,9 +253,9 @@ onMounted(loadRequests);
           {{ errorMessage }}
         </div>
 
-        <div class="mt-5 overflow-x-auto rounded-xl border border-border">
-          <table class="w-full min-w-[760px] border-collapse text-left text-sm">
-            <thead class="bg-surface-soft text-xs font-semibold uppercase tracking-wide text-text-muted">
+        <div class="data-table-shell">
+          <table class="data-table min-w-[760px]">
+            <thead>
               <tr>
                 <th class="px-4 py-3">Pengajuan</th>
                 <th class="px-4 py-3">Periode</th>
@@ -260,14 +264,14 @@ onMounted(loadRequests);
                 <th class="px-4 py-3 text-right">Aksi</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-border">
-              <tr v-if="loading">
-                <td class="px-4 py-10 text-center text-text-muted" colspan="5">Memuat pengajuan...</td>
+            <tbody>
+              <tr v-if="loading" class="data-state-row">
+                <td class="py-10 text-center text-text-muted" colspan="5">Memuat pengajuan...</td>
               </tr>
-              <tr v-else-if="requests.length === 0">
-                <td class="px-4 py-10 text-center" colspan="5">
+              <tr v-else-if="requests.length === 0" class="data-state-row">
+                <td class="py-10 text-center" colspan="5">
                   <p class="font-medium text-primary">Belum ada pengajuan.</p>
-                  <p class="mt-1 text-sm text-text-muted">Gunakan tombol Ajukan untuk membuat pengajuan pertama Anda.</p>
+                  <p class="mt-1 text-sm text-text-muted">Buat pengajuan baru atau ubah filter yang sedang digunakan.</p>
                 </td>
               </tr>
               <template v-else>
@@ -281,7 +285,7 @@ onMounted(loadRequests);
                   <td class="px-4 py-4"><span :class="statusClass(request.status)">{{ statusLabel(request.status) }}</span></td>
                   <td class="px-4 py-4 text-right">
                     <button
-                      class="rounded-lg border border-primary-soft px-3 py-2 text-xs font-semibold text-primary-soft hover:bg-[#e9f0f7]"
+                      class="table-action-link"
                       type="button"
                       @click="openDetail(request)"
                     >
@@ -294,12 +298,11 @@ onMounted(loadRequests);
           </table>
         </div>
 
-        <div class="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm">
-          <p class="text-text-muted">{{ meta.total }} data</p>
+        <div class="data-pagination">
+          <p>Halaman {{ meta.page }} dari {{ meta.totalPages }}</p>
           <div class="flex items-center gap-3">
-            <button class="secondary-button" type="button" :disabled="meta.page <= 1 || loading" @click="changePage(meta.page - 1)">Sebelumnya</button>
-            <span class="text-text-muted">{{ meta.page }} / {{ meta.totalPages }}</span>
-            <button class="secondary-button" type="button" :disabled="meta.page >= meta.totalPages || loading" @click="changePage(meta.page + 1)">Berikutnya</button>
+            <button class="secondary-button min-h-9 px-3 py-2" type="button" :disabled="meta.page <= 1 || loading" @click="changePage(meta.page - 1)">Sebelumnya</button>
+            <button class="secondary-button min-h-9 px-3 py-2" type="button" :disabled="meta.page >= meta.totalPages || loading" @click="changePage(meta.page + 1)">Berikutnya</button>
           </div>
         </div>
       </section>

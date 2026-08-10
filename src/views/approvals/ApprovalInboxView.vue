@@ -98,10 +98,18 @@ onMounted(loadApprovals);
         <p class="mt-2 text-sm text-text-muted">Tinjau pengajuan yang menjadi tanggung jawab Anda.</p>
       </header>
 
-      <section class="mt-7 rounded-2xl border border-border bg-surface p-5 sm:p-6">
-        <div class="max-w-xs">
-          <label class="text-xs font-medium uppercase tracking-wide text-text-muted" for="approval-status">Status</label>
-          <select id="approval-status" v-model="status" class="form-input mt-2">
+      <section class="data-card">
+        <div class="data-card-heading">
+          <div>
+            <h2 class="text-base font-semibold text-primary">Daftar Persetujuan</h2>
+            <p class="mt-1 text-sm text-text-muted">Gunakan filter untuk menemukan pengajuan yang perlu ditinjau.</p>
+          </div>
+          <span class="data-count">{{ meta.total }} persetujuan</span>
+        </div>
+
+        <div class="mt-5 max-w-xs">
+          <label class="form-label" for="approval-status">Status</label>
+          <select id="approval-status" v-model="status" class="form-input">
             <option value="">Semua status</option>
             <option value="MENUNGGU">Menunggu</option>
             <option value="DISETUJUI">Disetujui</option>
@@ -111,14 +119,14 @@ onMounted(loadApprovals);
 
         <div v-if="errorMessage" class="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-danger" role="alert">{{ errorMessage }}</div>
 
-        <div class="mt-5 overflow-x-auto rounded-xl border border-border">
-          <table class="w-full min-w-[850px] border-collapse text-left text-sm">
-            <thead class="bg-surface-soft text-xs font-semibold uppercase tracking-wide text-text-muted">
+        <div class="data-table-shell">
+          <table class="data-table min-w-[850px]">
+            <thead>
               <tr><th class="px-4 py-3">Pengajuan</th><th class="px-4 py-3">Pemohon</th><th class="px-4 py-3">Departemen</th><th class="px-4 py-3">Tanggal</th><th class="px-4 py-3">Status</th><th class="px-4 py-3 text-right">Aksi</th></tr>
             </thead>
-            <tbody class="divide-y divide-border">
-              <tr v-if="loading"><td colspan="6" class="px-4 py-8 text-center text-text-muted">Memuat persetujuan...</td></tr>
-              <tr v-else-if="approvals.length === 0"><td colspan="6" class="px-4 py-8 text-center text-text-muted">Belum ada persetujuan pada status ini.</td></tr>
+            <tbody>
+              <tr v-if="loading" class="data-state-row"><td colspan="6" class="py-10 text-center text-text-muted">Memuat persetujuan...</td></tr>
+              <tr v-else-if="approvals.length === 0" class="data-state-row"><td colspan="6" class="py-10 text-center"><p class="font-medium text-primary">Belum ada persetujuan.</p><p class="mt-1 text-sm text-text-muted">Tidak ada pengajuan yang cocok dengan filter saat ini.</p></td></tr>
               <template v-else>
                 <tr v-for="item in approvals" :key="item.id">
                   <td class="px-4 py-4"><p class="font-medium text-primary">{{ requestLabel(item) }}</p><p class="mt-1 text-xs text-text-muted">REQ-{{ item.request.id }}</p></td>
@@ -126,16 +134,16 @@ onMounted(loadApprovals);
                   <td class="px-4 py-4 text-text-muted">{{ item.request.requester.department.name }}</td>
                   <td class="px-4 py-4 text-text-muted">{{ formatDate(item.request.createdAt) }}</td>
                   <td class="px-4 py-4"><span :class="statusClass(item.status)">{{ approvalStatusLabel(item.status) }}</span></td>
-                  <td class="px-4 py-4 text-right"><RouterLink class="rounded-lg border border-primary-soft px-3 py-2 text-xs font-semibold text-primary-soft hover:bg-[#e9f0f7]" :to="`/persetujuan/${item.id}`">Lihat Detail</RouterLink></td>
+                  <td class="px-4 py-4 text-right"><RouterLink class="table-action-link" :to="`/persetujuan/${item.id}`">Lihat detail</RouterLink></td>
                 </tr>
               </template>
             </tbody>
           </table>
         </div>
 
-        <div class="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm">
-          <p class="text-text-muted">{{ meta.total }} persetujuan</p>
-          <div class="flex items-center gap-2"><button class="rounded-lg border border-border px-3 py-2 text-primary disabled:opacity-40" type="button" :disabled="page <= 1" @click="changePage(page - 1)">Sebelumnya</button><span class="px-2 text-text-muted">{{ meta.page }} / {{ meta.totalPages }}</span><button class="rounded-lg border border-border px-3 py-2 text-primary disabled:opacity-40" type="button" :disabled="page >= meta.totalPages" @click="changePage(page + 1)">Berikutnya</button></div>
+        <div class="data-pagination">
+          <p>Halaman {{ meta.page }} dari {{ meta.totalPages }}</p>
+          <div class="flex items-center gap-3"><button class="secondary-button min-h-9 px-3 py-2" type="button" :disabled="page <= 1 || loading" @click="changePage(page - 1)">Sebelumnya</button><button class="secondary-button min-h-9 px-3 py-2" type="button" :disabled="page >= meta.totalPages || loading" @click="changePage(page + 1)">Berikutnya</button></div>
         </div>
       </section>
     </main>

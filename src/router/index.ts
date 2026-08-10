@@ -20,6 +20,7 @@ import RequestManagementView from '../views/hr/RequestManagementView.vue';
 import ManagedRequestDetailView from '../views/hr/ManagedRequestDetailView.vue';
 import ReimbursementManagementView from '../views/finance/ReimbursementManagementView.vue';
 import ManagedReimbursementDetailView from '../views/finance/ManagedReimbursementDetailView.vue';
+import NotFoundView from '../views/NotFoundView.vue';
 import { authState } from '../auth/auth';
 
 const router = createRouter({
@@ -149,6 +150,11 @@ const router = createRouter({
       name: 'profile',
       component: ProfileView,
       meta: { requiresAuth: true },
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: NotFoundView,
     },
   ],
   scrollBehavior: () => ({ top: 0 }),

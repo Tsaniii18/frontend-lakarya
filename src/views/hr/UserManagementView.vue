@@ -244,10 +244,14 @@ onMounted(loadUsers);
         <p class="mt-2 text-sm text-text-muted">Tinjau status dan kelola akun karyawan.</p>
       </header>
 
-      <section class="mt-7 rounded-2xl border border-border bg-surface p-5 sm:p-6">
-        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_220px_190px]">
+      <section class="data-card">
+        <div class="data-card-heading">
+          <div><h2 class="text-base font-semibold text-primary">Daftar Pengguna</h2><p class="mt-1 text-sm text-text-muted">Cari pengguna dan kelola status akun dari satu tempat.</p></div>
+          <span class="data-count">{{ meta.total }} pengguna</span>
+        </div>
+        <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_220px_190px]">
           <label>
-            <span class="sr-only">Cari pengguna</span>
+            <span class="form-label">Cari pengguna</span>
             <input
               v-model="search"
               class="form-input"
@@ -257,7 +261,7 @@ onMounted(loadUsers);
           </label>
 
           <label>
-            <span class="sr-only">Filter departemen</span>
+            <span class="form-label">Departemen</span>
             <select v-model="department" class="form-input">
               <option value="">Semua departemen</option>
               <option v-for="item in departments" :key="item" :value="item">{{ item }}</option>
@@ -265,7 +269,7 @@ onMounted(loadUsers);
           </label>
 
           <label>
-            <span class="sr-only">Filter status</span>
+            <span class="form-label">Status</span>
             <select v-model="status" class="form-input">
               <option value="">Semua status</option>
               <option value="MENUNGGU">Menunggu</option>
@@ -286,9 +290,9 @@ onMounted(loadUsers);
           <button class="shrink-0 text-lg leading-none" type="button" aria-label="Tutup pemberitahuan" @click="successMessage = ''">×</button>
         </div>
 
-        <div class="mt-5 overflow-x-auto rounded-xl border border-border">
-          <table class="w-full min-w-[1100px] border-collapse text-left text-sm">
-            <thead class="bg-surface-soft text-xs font-semibold uppercase tracking-wide text-text-muted">
+        <div class="data-table-shell">
+          <table class="data-table min-w-[1100px]">
+            <thead>
               <tr>
                 <th class="px-4 py-3">
                   <button class="flex items-center gap-2 hover:text-primary" type="button" @click="toggleSort('name')">
@@ -323,12 +327,12 @@ onMounted(loadUsers);
                 <th class="px-4 py-3 text-right">Aksi</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-border">
-              <tr v-if="loading">
-                <td class="px-4 py-8 text-center text-text-muted" colspan="7">Memuat pengguna...</td>
+            <tbody>
+              <tr v-if="loading" class="data-state-row">
+                <td class="py-10 text-center text-text-muted" colspan="7">Memuat pengguna...</td>
               </tr>
-              <tr v-else-if="users.length === 0">
-                <td class="px-4 py-8 text-center text-text-muted" colspan="7">Pengguna tidak ditemukan.</td>
+              <tr v-else-if="users.length === 0" class="data-state-row">
+                <td class="py-10 text-center" colspan="7"><p class="font-medium text-primary">Pengguna tidak ditemukan.</p><p class="mt-1 text-sm text-text-muted">Coba ubah kata pencarian atau filter yang dipilih.</p></td>
               </tr>
               <template v-else>
                 <tr v-for="user in users" :key="user.id" class="text-text">
@@ -391,8 +395,8 @@ onMounted(loadUsers);
           </table>
         </div>
 
-        <div class="mt-5 flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <p class="text-text-muted">Total {{ meta.total }} pengguna</p>
+        <div class="data-pagination">
+          <p>Halaman {{ meta.page }} dari {{ meta.totalPages }}</p>
           <div class="flex items-center gap-3">
             <button
               class="secondary-button min-h-9 px-3 py-2"
