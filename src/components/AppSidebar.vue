@@ -56,7 +56,7 @@ watch(
   ></div>
 
   <aside
-    class="fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col overflow-y-auto bg-primary px-6 py-7 text-white transition-[width,transform] duration-200 md:static md:z-auto md:min-h-screen md:translate-x-0"
+    class="fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col overflow-y-auto bg-primary px-6 py-7 text-white transition-[width,transform] duration-200 md:sticky md:inset-y-auto md:top-0 md:z-auto md:h-screen md:self-start md:translate-x-0"
     :class="[
       mobileOpen ? 'translate-x-0' : '-translate-x-full',
       collapsed ? 'md:w-20 md:px-3' : 'md:w-[248px] md:px-6',
