@@ -7,6 +7,9 @@ import ResetPasswordView from '../views/auth/ResetPasswordView.vue';
 import HomeView from '../views/HomeView.vue';
 import ProfileView from '../views/ProfileView.vue';
 import UserManagementView from '../views/hr/UserManagementView.vue';
+import RequestsView from '../views/requests/RequestsView.vue';
+import LeaveFormView from '../views/requests/LeaveFormView.vue';
+import LeaveDetailView from '../views/requests/LeaveDetailView.vue';
 import { authState } from '../auth/auth';
 
 const router = createRouter({
@@ -45,6 +48,24 @@ const router = createRouter({
       path: '/beranda',
       name: 'home',
       component: HomeView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/pengajuan',
+      name: 'requests',
+      component: RequestsView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/pengajuan/cuti/baru',
+      name: 'leave-create',
+      component: LeaveFormView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/pengajuan/cuti/:id',
+      name: 'leave-detail',
+      component: LeaveDetailView,
       meta: { requiresAuth: true },
     },
     {

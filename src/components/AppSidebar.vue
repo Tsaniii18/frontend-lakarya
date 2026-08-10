@@ -116,10 +116,13 @@ watch(
         <span :class="{ 'md:hidden': collapsed }">Beranda</span>
       </RouterLink>
 
-      <div
+      <RouterLink
         class="portal-nav-item flex items-center gap-3"
-        :class="collapsed ? 'md:justify-center md:px-0' : ''"
-        aria-disabled="true"
+        :class="[
+          { 'portal-nav-item-active': route.path.startsWith('/pengajuan') },
+          collapsed ? 'md:justify-center md:px-0' : '',
+        ]"
+        to="/pengajuan"
         title="Pengajuan"
       >
         <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -127,7 +130,7 @@ watch(
           <rect x="4" y="5" width="16" height="15" rx="2" />
         </svg>
         <span :class="{ 'md:hidden': collapsed }">Pengajuan</span>
-      </div>
+      </RouterLink>
 
       <div
         class="portal-nav-item flex items-center gap-3"
