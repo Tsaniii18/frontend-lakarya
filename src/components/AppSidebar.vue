@@ -35,7 +35,7 @@ watch(
 
 <template>
   <header class="flex items-center justify-between bg-primary px-5 py-4 text-white md:hidden">
-    <AppLogo mode="inverse" />
+    <AppLogo v-if="!mobileOpen" mode="inverse" />
     <button
       class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/20 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-light"
       type="button"
@@ -63,8 +63,12 @@ watch(
     ]"
   >
     <div class="flex items-center justify-between" :class="{ 'md:flex-col md:gap-4': collapsed }">
-      <AppLogo class="md:hidden" mode="inverse" />
-      <AppLogo v-if="!collapsed" class="hidden md:inline-flex" mode="inverse" />
+      <div class="md:hidden">
+        <AppLogo mode="inverse" />
+      </div>
+      <div v-if="!collapsed" class="hidden md:block">
+        <AppLogo mode="inverse" />
+      </div>
       <span
         v-else
         class="hidden h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-sm font-semibold text-white md:inline-flex"
