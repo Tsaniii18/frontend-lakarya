@@ -25,12 +25,13 @@ interface ApprovalDetail {
   canProcess: boolean;
   request: {
     id: number;
-    type: 'CUTI' | 'IZIN';
+    type: 'CUTI' | 'IZIN' | 'PENGGANTIAN_BIAYA';
     status: RequestStatus;
     createdAt: string;
     requester: { name: string; employeeNumber: string; department: { name: string } };
     leaveRequest: { leaveType: 'TAHUNAN' | 'KHUSUS'; startDate: string; endDate: string; reason: string } | null;
     permissionRequest: { permissionType: 'HARIAN' | 'JAM'; startDate: string; endDate: string; totalDays: number | string; startTime: string | null; endTime: string | null; reason: string } | null;
+    reimbursementRequest: { expenseType: 'TRANSPORTASI' | 'KONSUMSI' | 'OPERASIONAL' | 'LAINNYA'; expenseDate: string; expenseAmount: number | string; description: string } | null;
     attachments: Array<{ id: number; fileName: string; mimeType: string; sizeByte: number }>;
     approvals: ApprovalStep[];
   };
@@ -56,11 +57,20 @@ function statusClass(value: RequestStatus) {
 
 function requestLabel() {
   if (approval.value?.request.leaveRequest) return approval.value.request.leaveRequest.leaveType === 'TAHUNAN' ? 'Cuti Tahunan' : 'Cuti Khusus';
+  if (approval.value?.request.reimbursementRequest) return 'Penggantian Biaya';
   return approval.value?.request.permissionRequest?.permissionType === 'HARIAN' ? 'Izin Harian' : 'Izin Per Jam';
 }
 
 function reason() {
-  return approval.value?.request.leaveRequest?.reason ?? approval.value?.request.permissionRequest?.reason ?? '';
+  return approval.value?.request.leaveRequest?.reason ?? approval.value?.request.permissionRequest?.reason ?? approval.value?.request.reimbursementRequest?.description ?? '';
+}
+
+function expenseLabel(value: 'TRANSPORTASI' | 'KONSUMSI' | 'OPERASIONAL' | 'LAINNYA') {
+  return { TRANSPORTASI: 'Transportasi', KONSUMSI: 'Konsumsi', OPERASIONAL: 'Operasional', LAINNYA: 'Lainnya' }[value];
+}
+
+function formatCurrency(value: number | string) {
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 2 }).format(Number(value));
 }
 
 function formatDate(value: string) {
@@ -177,8 +187,13 @@ onMounted(loadDetail);
               <div class="border-t border-border p-4 sm:border-r sm:border-t-0"><dt class="text-xs uppercase tracking-wide text-text-muted">Mulai</dt><dd class="mt-2 text-sm font-medium text-text">{{ formatTime(approval.request.permissionRequest.startTime) }}</dd></div>
               <div class="border-t border-border p-4 sm:border-t-0"><dt class="text-xs uppercase tracking-wide text-text-muted">Selesai</dt><dd class="mt-2 text-sm font-medium text-text">{{ formatTime(approval.request.permissionRequest.endTime) }}</dd></div>
             </dl>
+            <dl v-else-if="approval.request.reimbursementRequest" class="mt-5 grid overflow-hidden rounded-xl border border-border sm:grid-cols-3">
+              <div class="p-4 sm:border-r sm:border-border"><dt class="text-xs uppercase tracking-wide text-text-muted">Tipe Biaya</dt><dd class="mt-2 text-sm font-medium text-text">{{ expenseLabel(approval.request.reimbursementRequest.expenseType) }}</dd></div>
+              <div class="border-t border-border p-4 sm:border-r sm:border-t-0"><dt class="text-xs uppercase tracking-wide text-text-muted">Tanggal Biaya</dt><dd class="mt-2 text-sm font-medium text-text">{{ formatDate(approval.request.reimbursementRequest.expenseDate) }}</dd></div>
+              <div class="border-t border-border p-4 sm:border-t-0"><dt class="text-xs uppercase tracking-wide text-text-muted">Nominal</dt><dd class="mt-2 text-sm font-semibold text-primary">{{ formatCurrency(approval.request.reimbursementRequest.expenseAmount) }}</dd></div>
+            </dl>
 
-            <div class="mt-5"><p class="text-xs uppercase tracking-wide text-text-muted">Alasan</p><p class="mt-2 whitespace-pre-wrap rounded-xl bg-surface-soft px-4 py-3.5 text-sm leading-6 text-text">{{ reason() }}</p></div>
+            <div class="mt-5"><p class="text-xs uppercase tracking-wide text-text-muted">{{ approval.request.reimbursementRequest ? 'Deskripsi' : 'Alasan' }}</p><p class="mt-2 whitespace-pre-wrap rounded-xl bg-surface-soft px-4 py-3.5 text-sm leading-6 text-text">{{ reason() }}</p></div>
 
             <div class="mt-6 border-t border-border pt-6"><h3 class="text-sm font-semibold text-primary">Lampiran</h3><p v-if="approval.request.attachments.length === 0" class="mt-3 text-sm text-text-muted">Tidak ada lampiran.</p><div v-else class="mt-3 divide-y divide-border rounded-xl border border-border"><div v-for="file in approval.request.attachments" :key="file.id" class="flex items-center justify-between gap-3 px-4 py-3"><div class="min-w-0"><p class="truncate text-sm font-medium text-text">{{ file.fileName }}</p><p class="mt-1 text-xs text-text-muted">{{ formatFileSize(file.sizeByte) }}</p></div><button class="rounded-lg border border-primary-soft px-3 py-2 text-xs font-semibold text-primary-soft hover:bg-[#e9f0f7]" type="button" @click="previewAttachment(file.id)">Lihat</button></div></div></div>
           </section>
@@ -190,7 +205,7 @@ onMounted(loadDetail);
           </section>
         </div>
 
-        <aside class="h-fit rounded-2xl border border-border bg-surface p-5 sm:p-6"><h2 class="text-base font-semibold text-primary">Proses Persetujuan</h2><ol class="mt-5 space-y-0"><li v-for="(step, index) in approval.request.approvals" :key="step.id" class="relative flex gap-3 pb-6 last:pb-0"><span v-if="index < approval.request.approvals.length - 1" class="absolute left-[9px] top-5 h-full w-px bg-border"></span><span class="relative z-10 mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold" :class="step.status === 'DISETUJUI' ? 'border-success bg-success text-white' : step.status === 'DITOLAK' ? 'border-danger bg-danger text-white' : 'border-primary-soft bg-white text-primary-soft'">{{ step.status === 'DISETUJUI' ? '✓' : step.status === 'DITOLAK' ? '×' : '○' }}</span><div><p class="text-sm font-semibold text-primary">{{ step.approver.department.name === 'Human Resources' ? 'HR Manager' : `Manager ${step.approver.department.name}` }}</p><p class="mt-1 text-xs" :class="step.status === 'DISETUJUI' ? 'text-success' : step.status === 'DITOLAK' ? 'text-danger' : 'text-text-muted'">{{ statusLabel(step.status) }}<span v-if="step.reviewedAt"> · {{ formatDateTime(step.reviewedAt) }}</span></p><p v-if="step.reviewNote" class="mt-2 text-xs leading-5 text-text-muted">“{{ step.reviewNote }}”</p></div></li></ol></aside>
+        <aside class="h-fit rounded-2xl border border-border bg-surface p-5 sm:p-6"><h2 class="text-base font-semibold text-primary">Proses Persetujuan</h2><ol class="mt-5 space-y-0"><li v-for="(step, index) in approval.request.approvals" :key="step.id" class="relative flex gap-3 pb-6 last:pb-0"><span v-if="index < approval.request.approvals.length - 1" class="absolute left-[9px] top-5 h-full w-px bg-border"></span><span class="relative z-10 mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold" :class="step.status === 'DISETUJUI' ? 'border-success bg-success text-white' : step.status === 'DITOLAK' ? 'border-danger bg-danger text-white' : 'border-primary-soft bg-white text-primary-soft'">{{ step.status === 'DISETUJUI' ? '✓' : step.status === 'DITOLAK' ? '×' : '○' }}</span><div><p class="text-sm font-semibold text-primary">{{ step.approver.department.name === 'Human Resources' ? 'HR Manager' : step.approver.department.name === 'Finance' ? 'Finance Manager' : `Manager ${step.approver.department.name}` }}</p><p class="mt-1 text-xs" :class="step.status === 'DISETUJUI' ? 'text-success' : step.status === 'DITOLAK' ? 'text-danger' : 'text-text-muted'">{{ statusLabel(step.status) }}<span v-if="step.reviewedAt"> · {{ formatDateTime(step.reviewedAt) }}</span></p><p v-if="step.reviewNote" class="mt-2 text-xs leading-5 text-text-muted">“{{ step.reviewNote }}”</p></div></li></ol></aside>
       </div>
     </main>
   </div>
