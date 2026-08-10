@@ -20,6 +20,15 @@ interface RequestItem {
     endDate: string;
     reason: string;
   } | null;
+  permissionRequest?: {
+    permissionType: 'HARIAN' | 'JAM';
+    startDate: string;
+    endDate: string;
+    totalDays: number | string;
+    startTime: string | null;
+    endTime: string | null;
+    reason: string;
+  } | null;
 }
 
 interface RequestListResponse {
@@ -48,7 +57,11 @@ function typeLabel(request: RequestItem) {
       ? 'Cuti Khusus'
       : 'Cuti Tahunan';
   }
-  if (request.type === 'IZIN') return 'Izin';
+  if (request.type === 'IZIN') {
+    return request.permissionRequest?.permissionType === 'JAM'
+      ? 'Izin Per Jam'
+      : 'Izin Harian';
+  }
   return 'Penggantian Biaya';
 }
 
@@ -76,9 +89,25 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function formatTime(value: string | null) {
+  if (!value) return '—';
+  return new Intl.DateTimeFormat('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'UTC',
+  }).format(new Date(value));
+}
+
 function summary(request: RequestItem) {
   if (request.leaveRequest) {
     return `${formatDate(request.leaveRequest.startDate)} – ${formatDate(request.leaveRequest.endDate)}`;
+  }
+  if (request.permissionRequest?.permissionType === 'HARIAN') {
+    return `${formatDate(request.permissionRequest.startDate)} – ${formatDate(request.permissionRequest.endDate)}`;
+  }
+  if (request.permissionRequest) {
+    return `${formatDate(request.permissionRequest.startDate)} · ${formatTime(request.permissionRequest.startTime)}–${formatTime(request.permissionRequest.endTime)}`;
   }
   return `Diajukan ${formatDate(request.createdAt)}`;
 }
@@ -112,6 +141,9 @@ function openDetail(request: RequestItem) {
   if (request.type === 'CUTI') {
     void router.push(`/pengajuan/cuti/${request.id}`);
   }
+  if (request.type === 'IZIN') {
+    void router.push(`/pengajuan/izin/${request.id}`);
+  }
 }
 
 function changePage(nextPage: number) {
@@ -139,7 +171,37 @@ onMounted(loadRequests);
           <h1 class="mt-1 text-2xl font-semibold text-primary">Pengajuan</h1>
           <p class="mt-2 text-sm text-text-muted">Pantau cuti, izin, dan reimbursement Anda.</p>
         </div>
-        <RouterLink class="primary-button" to="/pengajuan/cuti/baru">Buat Pengajuan Cuti</RouterLink>
+        <div class="group relative self-start sm:self-auto">
+          <button class="primary-button gap-2" type="button" aria-haspopup="menu">
+            Ajukan
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="m7 10 5 5 5-5" />
+            </svg>
+          </button>
+          <div class="invisible absolute right-0 top-full z-20 w-64 pt-2 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+            <div class="overflow-hidden rounded-xl border border-border bg-surface p-2 shadow-[0_16px_40px_rgba(15,39,71,0.16)]" role="menu">
+              <RouterLink class="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-surface-soft" to="/pengajuan/cuti/baru" role="menuitem">
+                <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#e9f0f7] text-primary-soft">
+                  <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 3v3M17 3v3M4 9h16" /><rect x="4" y="5" width="16" height="15" rx="2" /></svg>
+                </span>
+                <span><span class="block text-sm font-semibold text-primary">Cuti</span><span class="mt-0.5 block text-xs text-text-muted">Tahunan atau khusus</span></span>
+              </RouterLink>
+              <RouterLink class="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-surface-soft" to="/pengajuan/izin/baru" role="menuitem">
+                <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#e7f2ef] text-success">
+                  <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg>
+                </span>
+                <span><span class="block text-sm font-semibold text-primary">Izin</span><span class="mt-0.5 block text-xs text-text-muted">Harian atau per jam</span></span>
+              </RouterLink>
+              <div class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 opacity-60" aria-disabled="true" role="menuitem">
+                <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#f8efdf] text-warning">
+                  <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2" /><path d="M8 10h8M8 14h5" /></svg>
+                </span>
+                <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-primary">Reimbursement</span><span class="mt-0.5 block text-xs text-text-muted">Penggantian biaya</span></span>
+                <span class="status-warning">Segera</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </header>
 
       <section class="mt-7 rounded-2xl border border-border bg-surface p-5 sm:p-6">
@@ -194,8 +256,7 @@ onMounted(loadRequests);
               <tr v-else-if="requests.length === 0">
                 <td class="px-4 py-10 text-center" colspan="5">
                   <p class="font-medium text-primary">Belum ada pengajuan.</p>
-                  <p class="mt-1 text-sm text-text-muted">Buat pengajuan pertama Anda saat dibutuhkan.</p>
-                  <RouterLink class="secondary-button mt-4" to="/pengajuan/cuti/baru">Buat Pengajuan</RouterLink>
+                  <p class="mt-1 text-sm text-text-muted">Gunakan tombol Ajukan untuk membuat pengajuan pertama Anda.</p>
                 </td>
               </tr>
               <template v-else>
@@ -209,7 +270,7 @@ onMounted(loadRequests);
                   <td class="px-4 py-4"><span :class="statusClass(request.status)">{{ statusLabel(request.status) }}</span></td>
                   <td class="px-4 py-4 text-right">
                     <button
-                      v-if="request.type === 'CUTI'"
+                      v-if="request.type === 'CUTI' || request.type === 'IZIN'"
                       class="rounded-lg border border-primary-soft px-3 py-2 text-xs font-semibold text-primary-soft hover:bg-[#e9f0f7]"
                       type="button"
                       @click="openDetail(request)"

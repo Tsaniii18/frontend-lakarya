@@ -10,6 +10,8 @@ import UserManagementView from '../views/hr/UserManagementView.vue';
 import RequestsView from '../views/requests/RequestsView.vue';
 import LeaveFormView from '../views/requests/LeaveFormView.vue';
 import LeaveDetailView from '../views/requests/LeaveDetailView.vue';
+import PermissionFormView from '../views/requests/PermissionFormView.vue';
+import PermissionDetailView from '../views/requests/PermissionDetailView.vue';
 import { authState } from '../auth/auth';
 
 const router = createRouter({
@@ -66,6 +68,18 @@ const router = createRouter({
       path: '/pengajuan/cuti/:id',
       name: 'leave-detail',
       component: LeaveDetailView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/pengajuan/izin/baru',
+      name: 'permission-create',
+      component: PermissionFormView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/pengajuan/izin/:id',
+      name: 'permission-detail',
+      component: PermissionDetailView,
       meta: { requiresAuth: true },
     },
     {

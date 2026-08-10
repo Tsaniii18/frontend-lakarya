@@ -27,6 +27,14 @@ interface ActiveRequest {
     startDate: string;
     endDate: string;
   } | null;
+  permissionRequest?: {
+    permissionType: 'HARIAN' | 'JAM';
+    startDate: string;
+    endDate: string;
+    totalDays: number | string;
+    startTime: string | null;
+    endTime: string | null;
+  } | null;
 }
 
 interface ActiveRequestsResponse {
@@ -82,7 +90,11 @@ function requestLabel(request: ActiveRequest) {
       ? 'Cuti Khusus'
       : 'Cuti Tahunan';
   }
-  if (request.type === 'IZIN') return 'Izin';
+  if (request.type === 'IZIN') {
+    return request.permissionRequest?.permissionType === 'JAM'
+      ? 'Izin Per Jam'
+      : 'Izin Harian';
+  }
   return 'Penggantian Biaya';
 }
 
@@ -95,11 +107,33 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function formatTime(value: string | null) {
+  if (!value) return '—';
+  return new Intl.DateTimeFormat('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'UTC',
+  }).format(new Date(value));
+}
+
 function requestSummary(request: ActiveRequest) {
   if (request.leaveRequest) {
     return `${formatDate(request.leaveRequest.startDate)} – ${formatDate(request.leaveRequest.endDate)} · ${request.totalDays ?? 0} hari`;
   }
+  if (request.permissionRequest?.permissionType === 'HARIAN') {
+    return `${formatDate(request.permissionRequest.startDate)} – ${formatDate(request.permissionRequest.endDate)} · ${Number(request.permissionRequest.totalDays)} hari`;
+  }
+  if (request.permissionRequest) {
+    return `${formatDate(request.permissionRequest.startDate)} · ${formatTime(request.permissionRequest.startTime)}–${formatTime(request.permissionRequest.endTime)}`;
+  }
   return `Diajukan ${formatDate(request.createdAt)}`;
+}
+
+function requestDetailPath(request: ActiveRequest) {
+  if (request.type === 'CUTI') return `/pengajuan/cuti/${request.id}`;
+  if (request.type === 'IZIN') return `/pengajuan/izin/${request.id}`;
+  return '';
 }
 
 async function loadDashboardData() {
@@ -304,9 +338,9 @@ onBeforeUnmount(() => {
               </div>
               <div class="flex items-center gap-3 self-start sm:self-auto">
                 <RouterLink
-                  v-if="request.type === 'CUTI'"
+                  v-if="requestDetailPath(request)"
                   class="text-xs font-semibold text-primary-soft hover:text-primary"
-                  :to="`/pengajuan/cuti/${request.id}`"
+                  :to="requestDetailPath(request)"
                 >
                   Lihat detail
                 </RouterLink>

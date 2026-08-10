@@ -64,6 +64,16 @@ const insufficientBalance = computed(
     totalDays.value > balance.value.availableDays,
 );
 
+function formatSelectedDate(value: string) {
+  if (!value) return 'Belum dipilih';
+  return new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${value}T00:00:00.000Z`));
+}
+
 async function loadBalance() {
   if (form.leaveType !== 'TAHUNAN') return;
   loadingBalance.value = true;
@@ -173,15 +183,6 @@ onMounted(loadBalance);
             </div>
           </fieldset>
 
-          <div class="mt-4 rounded-lg bg-[#e9f0f7] px-4 py-3 text-sm leading-6 text-primary-soft">
-            <template v-if="form.leaveType === 'TAHUNAN'">
-              Cuti tahunan harus diajukan minimal 3 hari sebelum tanggal mulai.
-            </template>
-            <template v-else>
-              Cuti khusus dapat diajukan untuk hari ini, tetapi tidak dapat diajukan untuk tanggal yang sudah lewat.
-            </template>
-          </div>
-
           <div class="mt-5 grid gap-4 sm:grid-cols-2">
             <label>
               <span class="form-label">Tanggal mulai</span>
@@ -212,18 +213,49 @@ onMounted(loadBalance);
           </div>
         </form>
 
-        <aside v-if="form.leaveType === 'TAHUNAN'" class="h-fit rounded-2xl border border-border bg-surface p-5 sm:p-6">
-          <p class="text-sm font-medium text-text-muted">Cuti Tahunan {{ selectedYear }}</p>
-          <p v-if="loadingBalance" class="mt-5 text-sm text-text-muted">Memuat saldo...</p>
-          <template v-else-if="balance">
-            <p class="mt-4 text-4xl font-semibold tracking-tight text-primary">{{ balance.availableDays }} <span class="text-base font-medium text-text-muted">hari</span></p>
-            <p class="mt-1 text-sm text-text-muted">Tersedia</p>
-            <div class="mt-6 grid grid-cols-3 gap-2 border-t border-border pt-4 text-center">
-              <div><p class="font-semibold text-primary">{{ balance.totalDays }}</p><p class="mt-1 text-xs text-text-muted">Total</p></div>
-              <div><p class="font-semibold text-primary">{{ balance.usedDays }}</p><p class="mt-1 text-xs text-text-muted">Terpakai</p></div>
-              <div><p class="font-semibold text-primary">{{ balance.reservedDays }}</p><p class="mt-1 text-xs text-text-muted">Dipesan</p></div>
+        <aside class="space-y-5">
+          <section class="rounded-2xl border border-border bg-surface p-5 sm:p-6">
+            <h2 class="text-base font-semibold text-primary">Ringkasan Cuti</h2>
+            <dl class="mt-5 space-y-4">
+              <div class="flex items-start justify-between gap-4">
+                <dt class="text-sm text-text-muted">Tipe</dt>
+                <dd class="text-right text-sm font-medium text-text">{{ form.leaveType === 'TAHUNAN' ? 'Tahunan' : 'Khusus' }}</dd>
+              </div>
+              <div class="flex items-start justify-between gap-4 border-t border-border pt-4">
+                <dt class="text-sm text-text-muted">Tanggal</dt>
+                <dd class="max-w-40 text-right text-sm font-medium leading-5 text-text">
+                  {{ formatSelectedDate(form.startDate) }}<template v-if="form.endDate"> – {{ formatSelectedDate(form.endDate) }}</template>
+                </dd>
+              </div>
+              <div class="flex items-start justify-between gap-4 border-t border-border pt-4">
+                <dt class="text-sm text-text-muted">Durasi</dt>
+                <dd class="text-right text-sm font-medium text-text">{{ totalDays > 0 ? `${totalDays} hari` : 'Belum dihitung' }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section v-if="form.leaveType === 'TAHUNAN'" class="rounded-2xl border border-[#cadbea] bg-[#f4f8fb] p-5">
+            <div class="flex items-start gap-3">
+              <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#e1edf6] text-primary-soft">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 8h.01M11 12h1v4h1" /><circle cx="12" cy="12" r="9" /></svg>
+              </span>
+              <div><h2 class="text-sm font-semibold text-primary">Ketentuan cuti tahunan</h2><p class="mt-1 text-xs leading-5 text-text-muted">Cuti tahunan harus diajukan minimal 3 hari sebelum tanggal mulai.</p></div>
             </div>
-          </template>
+          </section>
+
+          <section v-if="form.leaveType === 'TAHUNAN'" class="rounded-2xl border border-border bg-surface p-5 sm:p-6">
+            <p class="text-sm font-medium text-text-muted">Cuti Tahunan {{ selectedYear }}</p>
+            <p v-if="loadingBalance" class="mt-5 text-sm text-text-muted">Memuat saldo...</p>
+            <template v-else-if="balance">
+              <p class="mt-4 text-4xl font-semibold tracking-tight text-primary">{{ balance.availableDays }} <span class="text-base font-medium text-text-muted">hari</span></p>
+              <p class="mt-1 text-sm text-text-muted">Tersedia</p>
+              <div class="mt-6 grid grid-cols-3 gap-2 border-t border-border pt-4 text-center">
+                <div><p class="font-semibold text-primary">{{ balance.totalDays }}</p><p class="mt-1 text-xs text-text-muted">Total</p></div>
+                <div><p class="font-semibold text-primary">{{ balance.usedDays }}</p><p class="mt-1 text-xs text-text-muted">Terpakai</p></div>
+                <div><p class="font-semibold text-primary">{{ balance.reservedDays }}</p><p class="mt-1 text-xs text-text-muted">Dipesan</p></div>
+              </div>
+            </template>
+          </section>
         </aside>
       </div>
     </main>
