@@ -20,6 +20,11 @@ import RequestManagementView from '../views/hr/RequestManagementView.vue';
 import ManagedRequestDetailView from '../views/hr/ManagedRequestDetailView.vue';
 import ReimbursementManagementView from '../views/finance/ReimbursementManagementView.vue';
 import ManagedReimbursementDetailView from '../views/finance/ManagedReimbursementDetailView.vue';
+import ComplaintListView from '../views/complaints/ComplaintListView.vue';
+import ComplaintFormView from '../views/complaints/ComplaintFormView.vue';
+import ComplaintDetailView from '../views/complaints/ComplaintDetailView.vue';
+import ComplaintManagementView from '../views/hr/ComplaintManagementView.vue';
+import ManagedComplaintDetailView from '../views/hr/ManagedComplaintDetailView.vue';
 import NotFoundView from '../views/NotFoundView.vue';
 import { authState } from '../auth/auth';
 
@@ -146,6 +151,36 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresFinance: true },
     },
     {
+      path: '/keluhan',
+      name: 'complaints',
+      component: ComplaintListView,
+      meta: { requiresAuth: true, forbidsHr: true },
+    },
+    {
+      path: '/keluhan/baru',
+      name: 'complaint-create',
+      component: ComplaintFormView,
+      meta: { requiresAuth: true, forbidsHr: true },
+    },
+    {
+      path: '/keluhan/:id',
+      name: 'complaint-detail',
+      component: ComplaintDetailView,
+      meta: { requiresAuth: true, forbidsHr: true },
+    },
+    {
+      path: '/kelola-keluhan',
+      name: 'complaint-management',
+      component: ComplaintManagementView,
+      meta: { requiresAuth: true, requiresHr: true },
+    },
+    {
+      path: '/kelola-keluhan/:id',
+      name: 'managed-complaint-detail',
+      component: ManagedComplaintDetailView,
+      meta: { requiresAuth: true, requiresHr: true },
+    },
+    {
       path: '/profil',
       name: 'profile',
       component: ProfileView,
@@ -191,6 +226,14 @@ router.beforeEach((to) => {
     to.meta.requiresFinance &&
     (authState.user?.role !== 'MANAJER' ||
       authState.user.department.name !== 'Finance')
+  ) {
+    return { name: 'home' };
+  }
+
+  if (
+    to.meta.forbidsHr &&
+    authState.user?.role === 'MANAJER' &&
+    authState.user.department.name === 'Human Resources'
   ) {
     return { name: 'home' };
   }
