@@ -44,12 +44,32 @@ interface ActiveRequestsResponse {
   };
 }
 
+type ComplaintStatus = 'TERBUKA' | 'DIPROSES' | 'SELESAI' | 'DITUTUP';
+
+interface RecentComplaint {
+  id: number;
+  subject: string;
+  status: ComplaintStatus;
+  createdAt: string;
+  reporter?: { name: string };
+}
+
+interface RecentComplaintsResponse {
+  data: RecentComplaint[];
+}
+
 const profilePictureUrl = ref('');
 const leaveBalance = ref<LeaveBalance | null>(null);
 const activeRequests = ref<ActiveRequest[]>([]);
 const activeRequestTotal = ref(0);
+const recentComplaints = ref<RecentComplaint[]>([]);
 const loadingDashboard = ref(false);
 const dashboardError = ref('');
+const isHrManager = computed(
+  () =>
+    authState.user?.role === 'MANAJER' &&
+    authState.user.department.name === 'Human Resources',
+);
 
 const availablePercentage = computed(() => {
   if (!leaveBalance.value?.totalDays) return 0;
@@ -136,12 +156,36 @@ function requestDetailPath(request: ActiveRequest) {
   return '';
 }
 
+function complaintStatusLabel(value: ComplaintStatus) {
+  return {
+    TERBUKA: 'Terbuka',
+    DIPROSES: 'Diproses',
+    SELESAI: 'Selesai',
+    DITUTUP: 'Ditutup',
+  }[value];
+}
+
+function complaintStatusClass(value: ComplaintStatus) {
+  if (value === 'TERBUKA') return 'status-warning';
+  if (value === 'SELESAI') return 'status-success';
+  return 'status-info';
+}
+
+function complaintDetailPath(complaintId: number) {
+  return isHrManager.value
+    ? `/kelola-keluhan/${complaintId}`
+    : `/keluhan/${complaintId}`;
+}
+
 async function loadDashboardData() {
   loadingDashboard.value = true;
   dashboardError.value = '';
 
   try {
-    const [balanceResponse, requestsResponse] = await Promise.all([
+    const complaintEndpoint = isHrManager.value
+      ? '/manage/complaints'
+      : '/complaints';
+    const [balanceResponse, requestsResponse, complaintsResponse] = await Promise.all([
       api.get<LeaveBalance>('/leave/balance', {
         headers: getAuthHeaders(),
       }),
@@ -155,11 +199,21 @@ async function loadDashboardData() {
           order: 'desc',
         },
       }),
+      api.get<RecentComplaintsResponse>(complaintEndpoint, {
+        headers: getAuthHeaders(),
+        params: {
+          page: 1,
+          limit: 3,
+          sort: 'createdAt',
+          order: 'desc',
+        },
+      }),
     ]);
 
     leaveBalance.value = balanceResponse.data;
     activeRequests.value = requestsResponse.data.data;
     activeRequestTotal.value = requestsResponse.data.meta.total;
+    recentComplaints.value = complaintsResponse.data.data;
   } catch (error) {
     dashboardError.value = getApiErrorMessage(error);
   } finally {
@@ -345,6 +399,51 @@ onBeforeUnmount(() => {
                   Lihat detail
                 </RouterLink>
                 <span class="status-warning">Menunggu</span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </section>
+
+      <section v-if="loadingDashboard || recentComplaints.length" class="mt-5 rounded-2xl border border-border bg-surface p-5 sm:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-semibold text-primary">{{ isHrManager ? 'Keluhan Masuk Terbaru' : 'Keluhan Terbaru' }}</h2>
+            <p class="mt-1 text-sm text-text-muted">{{ isHrManager ? 'Keluhan karyawan yang baru disampaikan.' : 'Perkembangan keluhan yang Anda sampaikan.' }}</p>
+          </div>
+          <RouterLink
+            class="rounded-lg border border-primary-soft px-3 py-2 text-xs font-semibold text-primary-soft hover:bg-[#e9f0f7]"
+            :to="isHrManager ? '/kelola-keluhan' : '/keluhan'"
+          >
+            Lihat Semua Keluhan
+          </RouterLink>
+        </div>
+
+        <div class="mt-5 divide-y divide-border">
+          <p v-if="loadingDashboard" class="py-5 text-sm text-text-muted">Memuat keluhan terbaru...</p>
+          <template v-else>
+            <div
+              v-for="complaint in recentComplaints"
+              :key="complaint.id"
+              class="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div class="flex items-center gap-3">
+                <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#eef3f1] text-primary-soft">
+                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path d="M5 18.5 3.5 21l4-1.2a9 9 0 1 0-2.5-1.3Z" />
+                    <path d="M12 8v4M12 15.5h.01" />
+                  </svg>
+                </span>
+                <div>
+                  <p class="text-sm font-medium text-text">{{ complaint.subject }}</p>
+                  <p class="mt-1 text-xs text-text-muted">
+                    <span v-if="isHrManager && complaint.reporter">{{ complaint.reporter.name }} · </span>{{ formatDate(complaint.createdAt) }}
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-center gap-3 self-start sm:self-auto">
+                <RouterLink class="text-xs font-semibold text-primary-soft hover:text-primary" :to="complaintDetailPath(complaint.id)">Lihat detail</RouterLink>
+                <span :class="complaintStatusClass(complaint.status)">{{ complaintStatusLabel(complaint.status) }}</span>
               </div>
             </div>
           </template>

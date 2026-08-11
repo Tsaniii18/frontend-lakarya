@@ -289,3 +289,22 @@
     justify-content: space-between;
   }
 }
+
+.complaint-timeline-scroll {
+  scrollbar-color: var(--color-border-strong) transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.complaint-timeline-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.complaint-timeline-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.complaint-timeline-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--color-border-strong);
+}
