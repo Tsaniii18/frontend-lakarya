@@ -6,7 +6,7 @@ import api from '../../lib/api';
 
 type ComplaintStatus = 'TERBUKA' | 'DIPROSES' | 'SELESAI' | 'DITUTUP';
 type ComplaintCategory = 'PERORANGAN' | 'FASILITAS' | 'LAINNYA';
-interface ComplaintItem { id: number; subject: string; category: ComplaintCategory; status: ComplaintStatus; createdAt: string; reporter: { name: string; department: { name: string } }; handler: { name: string } | null }
+interface ComplaintItem { id: number; subject: string; category: ComplaintCategory; status: ComplaintStatus; createdAt: string; reporter: { name: string; department: { name: string } } }
 
 const complaints = ref<ComplaintItem[]>([]);
 const meta = ref({ page: 1, limit: 10, total: 0, totalPages: 1 });
@@ -55,10 +55,10 @@ onMounted(loadComplaints);
           <label><span class="form-label">Urutan</span><select v-model="order" class="form-input"><option value="desc">Terbaru</option><option value="asc">Terlama</option></select></label>
         </div>
         <div v-if="errorMessage" class="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-danger" role="alert">{{ errorMessage }}</div>
-        <div class="data-table-shell"><table class="data-table min-w-[950px]"><thead><tr><th>Keluhan</th><th>Pelapor</th><th>Kategori</th><th>Dibuat</th><th>Handler</th><th>Status</th><th class="text-right">Aksi</th></tr></thead><tbody>
-          <tr v-if="loading" class="data-state-row"><td colspan="7" class="py-10 text-center text-text-muted">Memuat keluhan...</td></tr>
-          <tr v-else-if="complaints.length === 0" class="data-state-row"><td colspan="7" class="py-10 text-center"><p class="font-medium text-primary">Keluhan tidak ditemukan.</p><p class="mt-1 text-sm text-text-muted">Coba ubah pencarian atau filter yang digunakan.</p></td></tr>
-          <template v-else><tr v-for="item in complaints" :key="item.id"><td><p class="font-medium text-primary">{{ item.subject }}</p><p class="mt-1 text-xs text-text-muted">KLH-{{ item.id }}</p></td><td><p class="text-text">{{ item.reporter.name }}</p><p class="mt-1 text-xs text-text-muted">{{ item.reporter.department.name }}</p></td><td class="text-text-muted">{{ categoryLabel(item.category) }}</td><td class="text-text-muted">{{ formatDate(item.createdAt) }}</td><td class="text-text-muted">{{ item.handler?.name ?? 'Belum ditugaskan' }}</td><td><span :class="statusClass(item.status)">{{ statusLabel(item.status) }}</span></td><td class="text-right"><RouterLink class="table-action-link" :to="`/kelola-keluhan/${item.id}`">Tinjau</RouterLink></td></tr></template>
+        <div class="data-table-shell"><table class="data-table min-w-[820px]"><thead><tr><th>Keluhan</th><th>Pelapor</th><th>Kategori</th><th>Dibuat</th><th>Status</th><th class="text-right">Aksi</th></tr></thead><tbody>
+          <tr v-if="loading" class="data-state-row"><td colspan="6" class="py-10 text-center text-text-muted">Memuat keluhan...</td></tr>
+          <tr v-else-if="complaints.length === 0" class="data-state-row"><td colspan="6" class="py-10 text-center"><p class="font-medium text-primary">Keluhan tidak ditemukan.</p><p class="mt-1 text-sm text-text-muted">Coba ubah pencarian atau filter yang digunakan.</p></td></tr>
+          <template v-else><tr v-for="item in complaints" :key="item.id"><td><p class="font-medium text-primary">{{ item.subject }}</p><p class="mt-1 text-xs text-text-muted">KLH-{{ item.id }}</p></td><td><p class="text-text">{{ item.reporter.name }}</p><p class="mt-1 text-xs text-text-muted">{{ item.reporter.department.name }}</p></td><td class="text-text-muted">{{ categoryLabel(item.category) }}</td><td class="text-text-muted">{{ formatDate(item.createdAt) }}</td><td><span :class="statusClass(item.status)">{{ statusLabel(item.status) }}</span></td><td class="text-right"><RouterLink class="table-action-link" :to="`/kelola-keluhan/${item.id}`">Tinjau</RouterLink></td></tr></template>
         </tbody></table></div>
         <div class="data-pagination"><p>Halaman {{ meta.page }} dari {{ meta.totalPages }}</p><div class="flex items-center gap-3"><button class="secondary-button min-h-9 px-3 py-2" type="button" :disabled="page <= 1 || loading" @click="changePage(page - 1)">Sebelumnya</button><button class="secondary-button min-h-9 px-3 py-2" type="button" :disabled="page >= meta.totalPages || loading" @click="changePage(page + 1)">Berikutnya</button></div></div>
       </section>
