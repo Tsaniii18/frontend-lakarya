@@ -220,6 +220,21 @@ router.beforeEach((to) => {
     return { name: 'home' };
   }
 
+  if (to.name === 'approvals') {
+    if (
+      authState.user?.role === 'MANAJER' &&
+      authState.user.department.name === 'Human Resources'
+    ) {
+      return { name: 'request-management', query: { scope: 'mine' } };
+    }
+    if (
+      authState.user?.role === 'MANAJER' &&
+      authState.user.department.name === 'Finance'
+    ) {
+      return { name: 'reimbursement-management', query: { scope: 'mine' } };
+    }
+  }
+
   if (
     to.meta.requiresManager &&
     authState.user?.role !== 'MANAJER'

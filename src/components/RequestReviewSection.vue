@@ -76,8 +76,8 @@ async function processApproval(action: 'approve' | 'reject') {
 
 <template>
   <section v-if="canProcess" class="rounded-2xl border border-border bg-surface p-5 sm:p-6">
-    <h2 class="text-lg font-semibold text-primary">Keputusan Persetujuan</h2>
-    <p class="mt-1 text-sm text-text-muted">Tambahkan catatan sebelum memproses pengajuan ini.</p>
+    <h2 class="text-lg font-semibold text-primary">Keputusan Anda</h2>
+    <p class="mt-1 text-sm text-text-muted">Tambahkan catatan sebelum menyetujui atau menolak pengajuan ini.</p>
 
     <div v-if="errorMessage" class="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-danger" role="alert">
       {{ errorMessage }}

@@ -87,12 +87,17 @@ const isFinanceManager = computed(
     authState.user?.role === 'MANAJER' &&
     authState.user.department.name === 'Finance',
 );
-const dashboardEyebrow = computed(() =>
-  isManager.value ? 'Beranda Manajer' : 'Beranda Karyawan',
-);
+const dashboardEyebrow = computed(() => {
+  if (!isManager.value) return 'Beranda Karyawan';
+  const department = authState.user?.department.name;
+  if (department === 'Human Resources') return 'Beranda Manajer HR';
+  if (department === 'Finance') return 'Beranda Manajer Keuangan';
+  if (department === 'Information Technology') return 'Beranda Manajer IT';
+  return `Beranda Manajer ${department ?? ''}`.trim();
+});
 const dashboardSubtitle = computed(() =>
   isManager.value
-    ? `Ringkasan aktivitas dan tanggung jawab ${authState.user?.department.name ?? ''}.`
+    ? `Ringkasan aktivitas Anda dan tanggung jawab tim ${authState.user?.department.name ?? ''}.`
     : 'Ringkasan aktivitas Anda.',
 );
 const approvalDescription = computed(() => {
@@ -100,12 +105,17 @@ const approvalDescription = computed(() => {
     return 'Semua pengajuan yang menjadi tanggung jawab Anda sudah ditinjau.';
   }
   if (isFinanceManager.value) {
-    return `${pendingApprovalTotal.value} pengajuan siap ditinjau dari kotak persetujuan Anda.`;
+    return `${pendingApprovalTotal.value} reimbursement karyawan siap Anda tinjau.`;
   }
   if (isHrManager.value) {
     return `${pendingApprovalTotal.value} pengajuan izin atau cuti siap Anda tinjau.`;
   }
   return `${pendingApprovalTotal.value} pengajuan tim siap Anda tinjau.`;
+});
+const approvalPath = computed(() => {
+  if (isHrManager.value) return { path: '/kelola-pengajuan', query: { scope: 'mine' } };
+  if (isFinanceManager.value) return { path: '/kelola-reimbursement', query: { scope: 'mine' } };
+  return { path: '/persetujuan' };
 });
 const summaryGridClass = computed(() => {
   if (!isManager.value) return 'lg:grid-cols-2';
@@ -162,7 +172,7 @@ function requestLabel(request: ActiveRequest) {
       ? 'Izin Per Jam'
       : 'Izin Harian';
   }
-  return 'Penggantian Biaya';
+  return 'Reimbursement';
 }
 
 function formatDate(value: string) {
@@ -421,7 +431,7 @@ onBeforeUnmount(() => {
         <section class="rounded-2xl border border-border bg-surface p-5 sm:p-6">
           <div class="flex items-center justify-between gap-4">
             <div>
-              <p class="text-sm font-medium text-text-muted">Pengajuan Aktif</p>
+              <p class="text-sm font-medium text-text-muted">Pengajuan Aktif Saya</p>
               <p class="mt-3 text-4xl font-semibold tracking-tight text-primary">{{ loadingDashboard ? '—' : activeRequestTotal }}</p>
             </div>
             <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#f8efdf] text-[#9a6824]">
@@ -441,7 +451,7 @@ onBeforeUnmount(() => {
         <RouterLink
           v-if="isManager"
           class="group rounded-2xl border border-border bg-surface p-5 hover:border-primary-soft hover:shadow-[0_10px_28px_rgba(15,39,71,0.08)] sm:p-6"
-          to="/persetujuan"
+          :to="approvalPath"
         >
           <div class="flex items-center justify-between gap-4">
             <div>
@@ -462,18 +472,18 @@ onBeforeUnmount(() => {
         <RouterLink
           v-if="isFinanceManager && pendingReimbursementTotal > 0"
           class="group rounded-2xl border border-border bg-surface p-5 hover:border-warning hover:shadow-[0_10px_28px_rgba(15,39,71,0.08)] sm:p-6"
-          to="/kelola-reimbursement"
+          :to="{ path: '/kelola-reimbursement', query: { scope: 'mine' } }"
         >
           <div class="flex items-center justify-between gap-4">
             <div>
-              <p class="text-sm font-medium text-text-muted">Reimbursement Menunggu</p>
+              <p class="text-sm font-medium text-text-muted">Reimbursement untuk Anda Tinjau</p>
               <p class="mt-3 text-4xl font-semibold tracking-tight text-primary">{{ pendingReimbursementTotal }}</p>
             </div>
             <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#f8efdf] text-warning">
               <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2" /><path d="M7 10h10M7 14h6" /></svg>
             </span>
           </div>
-          <p class="mt-5 text-sm leading-6 text-text-muted">{{ pendingReimbursementTotal }} reimbursement perlu persetujuan Finance.</p>
+          <p class="mt-5 text-sm leading-6 text-text-muted">{{ pendingReimbursementTotal }} reimbursement karyawan menunggu keputusan Anda.</p>
           <span class="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary-soft">Tinjau reimbursement <svg class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg></span>
         </RouterLink>
 
@@ -484,23 +494,23 @@ onBeforeUnmount(() => {
         >
           <div class="flex items-center justify-between gap-4">
             <div>
-              <p class="text-sm font-medium text-text-muted">User Baru Menunggu</p>
+              <p class="text-sm font-medium text-text-muted">Akun Baru untuk Anda Verifikasi</p>
               <p class="mt-3 text-4xl font-semibold tracking-tight text-primary">{{ pendingUserTotal }}</p>
             </div>
             <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#e9f0f7] text-primary-soft">
               <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10" cy="8" r="3" /><path d="M4.5 19c.5-3.5 2.4-5.5 5.5-5.5 1.2 0 2.3.3 3.1.9M17 11v6M14 14h6" /></svg>
             </span>
           </div>
-          <p class="mt-5 text-sm leading-6 text-text-muted">{{ pendingUserTotal }} akun baru perlu diverifikasi oleh HR.</p>
-          <span class="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary-soft">Tinjau pengguna <svg class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg></span>
+          <p class="mt-5 text-sm leading-6 text-text-muted">{{ pendingUserTotal }} akun karyawan baru menunggu verifikasi Anda.</p>
+          <span class="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary-soft">Tinjau akun karyawan <svg class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg></span>
         </RouterLink>
       </div>
 
       <section class="mt-5 rounded-2xl border border-border bg-surface p-5 sm:p-6">
         <div class="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 class="text-lg font-semibold text-primary">Pengajuan Aktif Terbaru</h2>
-            <p class="mt-1 text-sm text-text-muted">Pengajuan yang masih menunggu persetujuan.</p>
+            <h2 class="text-lg font-semibold text-primary">Pengajuan Aktif Saya</h2>
+            <p class="mt-1 text-sm text-text-muted">Pengajuan Anda yang masih menunggu proses persetujuan.</p>
           </div>
           <RouterLink
             class="rounded-lg border border-primary-soft px-3 py-2 text-xs font-semibold text-primary-soft hover:bg-[#e9f0f7]"
@@ -565,14 +575,14 @@ onBeforeUnmount(() => {
       <section class="mt-5 rounded-2xl border border-border bg-surface p-5 sm:p-6">
         <div class="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 class="text-lg font-semibold text-primary">{{ isHrManager ? 'Keluhan Masuk Terbaru' : 'Keluhan Terbaru' }}</h2>
+            <h2 class="text-lg font-semibold text-primary">{{ isHrManager ? 'Keluhan Karyawan Terbaru' : 'Keluhan Saya Terbaru' }}</h2>
             <p class="mt-1 text-sm text-text-muted">{{ isHrManager ? 'Keluhan karyawan yang baru disampaikan.' : 'Perkembangan keluhan yang Anda sampaikan.' }}</p>
           </div>
           <RouterLink
             class="rounded-lg border border-primary-soft px-3 py-2 text-xs font-semibold text-primary-soft hover:bg-[#e9f0f7]"
             :to="isHrManager ? '/kelola-keluhan' : '/keluhan'"
           >
-            Lihat Semua Keluhan
+            {{ isHrManager ? 'Lihat Semua Keluhan Karyawan' : 'Lihat Semua Keluhan Saya' }}
           </RouterLink>
         </div>
 

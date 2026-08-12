@@ -2,24 +2,24 @@
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppLogo from './AppLogo.vue';
-import ApprovalIcon from './ApprovalIcon.vue';
 import { authState, logout } from '../auth/auth';
 
 const route = useRoute();
 const router = useRouter();
 const collapsed = ref(localStorage.getItem('lakarya_sidebar_collapsed') === '1');
 const mobileOpen = ref(false);
+const teamMenuOpen = ref(
+  route.path.startsWith('/persetujuan') || route.query.from === 'persetujuan',
+);
 const hrMenuOpen = ref(
-  route.path.startsWith('/persetujuan') ||
-    route.path.startsWith('/kelola-pengajuan') ||
+  route.path.startsWith('/kelola-pengajuan') ||
     route.path === '/kelola-pengguna' ||
     route.path.startsWith('/kelola-keluhan') ||
     route.query.from === 'persetujuan' ||
     route.query.from === 'kelola-pengajuan',
 );
 const financeMenuOpen = ref(
-  route.path.startsWith('/persetujuan') ||
-    route.path.startsWith('/kelola-reimbursement') ||
+  route.path.startsWith('/kelola-reimbursement') ||
     route.query.from === 'persetujuan' ||
     route.query.from === 'kelola-reimbursement',
 );
@@ -38,6 +38,7 @@ const isFinanceManager = computed(
 const isDepartmentManager = computed(
   () => isManager.value && !isHrManager.value && !isFinanceManager.value,
 );
+const departmentManagementLabel = 'Kelola Staf';
 const requestDetailSource = computed(() => route.query.from);
 const isIncomingRequestDetail = computed(
   () =>
@@ -76,6 +77,9 @@ watch(
   () => route.path,
   (path) => {
     mobileOpen.value = false;
+    if (path.startsWith('/persetujuan')) {
+      teamMenuOpen.value = true;
+    }
     if (
       path.startsWith('/persetujuan') ||
       path.startsWith('/kelola-pengajuan') ||
@@ -214,19 +218,37 @@ watch(
         <span :class="{ 'md:hidden': collapsed }">Keluhan Saya</span>
       </RouterLink>
 
-      <RouterLink
-        v-if="isDepartmentManager"
-        class="portal-nav-item flex items-center gap-3"
-        :class="[
-          { 'portal-nav-item-active': route.path.startsWith('/persetujuan') || isIncomingRequestDetail },
-          collapsed ? 'md:justify-center md:px-0' : '',
-        ]"
-        to="/persetujuan"
-        title="Pengajuan Masuk"
-      >
-        <ApprovalIcon class="h-5 w-5 shrink-0" />
-        <span :class="{ 'md:hidden': collapsed }">Pengajuan Masuk</span>
-      </RouterLink>
+      <div v-if="isDepartmentManager">
+        <button
+          class="portal-nav-item flex w-full items-center gap-3 text-left"
+          :class="[
+            { 'portal-nav-item-active': route.path.startsWith('/persetujuan') || isIncomingRequestDetail },
+            collapsed ? 'md:justify-center md:px-0' : '',
+          ]"
+          type="button"
+          :title="departmentManagementLabel"
+          :aria-expanded="teamMenuOpen"
+          aria-controls="team-management-menu"
+          @click="teamMenuOpen = !teamMenuOpen"
+        >
+          <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path d="M4 7.5h16M7 3.5v4M17 3.5v4" />
+            <rect x="4" y="5" width="16" height="15" rx="2" />
+            <path d="M8 12h3M8 16h5" />
+          </svg>
+          <span class="min-w-0 flex-1" :class="{ 'md:hidden': collapsed }">{{ departmentManagementLabel }}</span>
+          <svg class="h-4 w-4 shrink-0 transition-transform" :class="[{ 'rotate-180': teamMenuOpen }, { 'md:hidden': collapsed }]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+        </button>
+
+        <div
+          v-if="teamMenuOpen"
+          id="team-management-menu"
+          class="ml-4 mt-1 space-y-1 border-l border-white/15 pl-3"
+          :class="{ 'md:ml-0 md:border-l-0 md:pl-0': collapsed }"
+        >
+          <RouterLink class="portal-nav-item py-2" :class="[{ 'portal-nav-item-active': route.path.startsWith('/persetujuan') || isIncomingRequestDetail }, collapsed ? 'md:px-0 md:text-center' : '']" to="/persetujuan" title="Cuti dan Izin Tim"><span :class="{ 'md:hidden': collapsed }">Cuti dan Izin Tim</span></RouterLink>
+        </div>
+      </div>
 
       <div v-if="isHrManager">
         <button
@@ -234,9 +256,7 @@ watch(
           :class="[
             {
               'portal-nav-item-active':
-                route.path.startsWith('/persetujuan') ||
                 route.path.startsWith('/kelola-pengajuan') ||
-                isIncomingRequestDetail ||
                 isHrManagedRequestDetail ||
                 route.path === '/kelola-pengguna' ||
                 route.path.startsWith('/kelola-keluhan'),
@@ -264,10 +284,9 @@ watch(
           class="ml-4 mt-1 space-y-1 border-l border-white/15 pl-3"
           :class="{ 'md:ml-0 md:border-l-0 md:pl-0': collapsed }"
         >
-          <RouterLink class="portal-nav-item flex items-center gap-3 py-2" :class="[{ 'portal-nav-item-active': route.path.startsWith('/persetujuan') || isIncomingRequestDetail }, collapsed ? 'md:justify-center md:px-0' : '']" to="/persetujuan" title="Pengajuan Masuk"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-current"></span><span :class="{ 'md:hidden': collapsed }">Pengajuan Masuk</span></RouterLink>
-          <RouterLink class="portal-nav-item flex items-center gap-3 py-2" :class="[{ 'portal-nav-item-active': route.path.startsWith('/kelola-pengajuan') || isHrManagedRequestDetail }, collapsed ? 'md:justify-center md:px-0' : '']" to="/kelola-pengajuan" title="Daftar Pengajuan"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-current"></span><span :class="{ 'md:hidden': collapsed }">Daftar Pengajuan</span></RouterLink>
-          <RouterLink class="portal-nav-item flex items-center gap-3 py-2" :class="[{ 'portal-nav-item-active': route.path === '/kelola-pengguna' }, collapsed ? 'md:justify-center md:px-0' : '']" to="/kelola-pengguna" title="Daftar Pengguna"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-current"></span><span :class="{ 'md:hidden': collapsed }">Daftar Pengguna</span></RouterLink>
-          <RouterLink class="portal-nav-item flex items-center gap-3 py-2" :class="[{ 'portal-nav-item-active': route.path.startsWith('/kelola-keluhan') }, collapsed ? 'md:justify-center md:px-0' : '']" to="/kelola-keluhan" title="Keluhan Masuk"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-current"></span><span :class="{ 'md:hidden': collapsed }">Keluhan Masuk</span></RouterLink>
+          <RouterLink class="portal-nav-item py-2" :class="[{ 'portal-nav-item-active': route.path.startsWith('/kelola-pengajuan') || isHrManagedRequestDetail }, collapsed ? 'md:px-0 md:text-center' : '']" to="/kelola-pengajuan" title="Cuti dan Izin Karyawan"><span :class="{ 'md:hidden': collapsed }">Cuti dan Izin Karyawan</span></RouterLink>
+          <RouterLink class="portal-nav-item py-2" :class="[{ 'portal-nav-item-active': route.path === '/kelola-pengguna' }, collapsed ? 'md:px-0 md:text-center' : '']" to="/kelola-pengguna" title="Akun Karyawan"><span :class="{ 'md:hidden': collapsed }">Akun Karyawan</span></RouterLink>
+          <RouterLink class="portal-nav-item py-2" :class="[{ 'portal-nav-item-active': route.path.startsWith('/kelola-keluhan') }, collapsed ? 'md:px-0 md:text-center' : '']" to="/kelola-keluhan" title="Keluhan Karyawan"><span :class="{ 'md:hidden': collapsed }">Keluhan Karyawan</span></RouterLink>
         </div>
       </div>
 
@@ -277,9 +296,7 @@ watch(
           :class="[
             {
               'portal-nav-item-active':
-                route.path.startsWith('/persetujuan') ||
                 route.path.startsWith('/kelola-reimbursement') ||
-                isIncomingRequestDetail ||
                 isFinanceManagedRequestDetail,
             },
             collapsed ? 'md:justify-center md:px-0' : '',
@@ -304,8 +321,7 @@ watch(
           class="ml-4 mt-1 space-y-1 border-l border-white/15 pl-3"
           :class="{ 'md:ml-0 md:border-l-0 md:pl-0': collapsed }"
         >
-          <RouterLink class="portal-nav-item flex items-center gap-3 py-2" :class="[{ 'portal-nav-item-active': route.path.startsWith('/persetujuan') || isIncomingRequestDetail }, collapsed ? 'md:justify-center md:px-0' : '']" to="/persetujuan" title="Pengajuan Masuk"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-current"></span><span :class="{ 'md:hidden': collapsed }">Pengajuan Masuk</span></RouterLink>
-          <RouterLink class="portal-nav-item flex items-center gap-3 py-2" :class="[{ 'portal-nav-item-active': route.path.startsWith('/kelola-reimbursement') || isFinanceManagedRequestDetail }, collapsed ? 'md:justify-center md:px-0' : '']" to="/kelola-reimbursement" title="Reimbursement"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-current"></span><span :class="{ 'md:hidden': collapsed }">Reimbursement</span></RouterLink>
+          <RouterLink class="portal-nav-item py-2" :class="[{ 'portal-nav-item-active': route.path.startsWith('/kelola-reimbursement') || isFinanceManagedRequestDetail }, collapsed ? 'md:px-0 md:text-center' : '']" to="/kelola-reimbursement" title="Reimbursement Karyawan"><span :class="{ 'md:hidden': collapsed }">Reimbursement Karyawan</span></RouterLink>
         </div>
       </div>
 
@@ -316,13 +332,13 @@ watch(
           collapsed ? 'md:justify-center md:px-0' : '',
         ]"
         to="/profil"
-        title="Profil"
+        title="Profil Saya"
       >
         <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
           <circle cx="12" cy="8" r="3.5" />
           <path d="M5.5 20a6.5 6.5 0 0 1 13 0" />
         </svg>
-        <span :class="{ 'md:hidden': collapsed }">Profil</span>
+        <span :class="{ 'md:hidden': collapsed }">Profil Saya</span>
       </RouterLink>
     </nav>
 

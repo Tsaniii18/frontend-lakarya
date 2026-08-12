@@ -142,8 +142,8 @@ async function submit() {
     <AppSidebar />
     <main class="min-w-0 px-5 py-7 sm:px-7 md:px-8 md:py-9 lg:px-10">
       <header class="border-b border-border pb-6">
-        <RouterLink class="text-sm font-semibold text-primary-soft hover:text-primary" to="/pengajuan">← Kembali ke Pengajuan</RouterLink>
-        <h1 class="mt-4 text-2xl font-semibold text-primary">Penggantian Biaya</h1>
+        <RouterLink class="text-sm font-semibold text-primary-soft hover:text-primary" to="/pengajuan">← Kembali ke Pengajuan Saya</RouterLink>
+        <h1 class="mt-4 text-2xl font-semibold text-primary">Ajukan Reimbursement</h1>
         <p class="mt-2 text-sm text-text-muted">Lengkapi rincian biaya dan unggah bukti pendukung.</p>
       </header>
 
@@ -173,7 +173,7 @@ async function submit() {
           </div>
 
           <p v-if="fieldError" class="mt-4 text-sm text-danger" role="alert">{{ fieldError }}</p>
-          <div class="mt-7 flex justify-end gap-3 border-t border-border pt-5"><RouterLink class="secondary-button" to="/pengajuan">Batal</RouterLink><button class="primary-button" type="submit" :disabled="submitting">{{ submitting ? 'Mengajukan...' : 'Ajukan Penggantian Biaya' }}</button></div>
+          <div class="mt-7 flex justify-end gap-3 border-t border-border pt-5"><RouterLink class="secondary-button" to="/pengajuan">Batal</RouterLink><button class="primary-button" type="submit" :disabled="submitting">{{ submitting ? 'Mengajukan...' : 'Ajukan Reimbursement' }}</button></div>
         </form>
 
         <aside class="h-fit rounded-2xl border border-border bg-surface p-5 sm:p-6">

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import AppSidebar from '../../components/AppSidebar.vue';
+import ApprovalProcessSummary from '../../components/ApprovalProcessSummary.vue';
 import ConfirmationModal from '../../components/ConfirmationModal.vue';
 import RequestReviewSection from '../../components/RequestReviewSection.vue';
 import { authState, getApiErrorMessage, getAuthHeaders } from '../../auth/auth';
@@ -29,20 +30,19 @@ const successMessage = ref('');
 const isOwner = computed(() => request.value?.requester.id === authState.user?.id);
 const detailSource = computed(() => route.query.from);
 const backTarget = computed(() => {
-  if (detailSource.value === 'kelola-reimbursement') return '/kelola-reimbursement';
+  if (detailSource.value === 'kelola-reimbursement') return { path: '/kelola-reimbursement', query: { scope: route.query.scope === 'all' ? 'all' : 'mine' } };
   if (detailSource.value === 'persetujuan') return '/persetujuan';
   return !request.value || isOwner.value ? '/pengajuan' : '/persetujuan';
 });
 const backLabel = computed(() => {
-  if (detailSource.value === 'kelola-reimbursement') return 'Kembali ke Kelola Reimbursement';
-  return (!request.value || isOwner.value) && detailSource.value !== 'persetujuan' ? 'Kembali ke Pengajuan' : 'Kembali ke Persetujuan';
+  if (detailSource.value === 'kelola-reimbursement') return 'Kembali ke Reimbursement Karyawan';
+  return (!request.value || isOwner.value) && detailSource.value !== 'persetujuan' ? 'Kembali ke Pengajuan Saya' : 'Kembali ke Pengajuan Tim';
 });
 
 function statusLabel(value: RequestStatus) { return { MENUNGGU: 'Menunggu', DISETUJUI: 'Disetujui', DITOLAK: 'Ditolak', DIBATALKAN: 'Dibatalkan' }[value]; }
 function statusClass(value: RequestStatus) { return value === 'MENUNGGU' ? 'status-warning' : value === 'DISETUJUI' ? 'status-success' : 'status-danger'; }
 function expenseLabel(value: ReimbursementDetail['reimbursementRequest']['expenseType']) { return { TRANSPORTASI: 'Transportasi', KONSUMSI: 'Konsumsi', OPERASIONAL: 'Operasional', LAINNYA: 'Lainnya' }[value]; }
 function formatDate(value: string) { return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(value)); }
-function formatDateTime(value: string) { return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value)); }
 function formatCurrency(value: number | string) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 2 }).format(Number(value)); }
 function formatFileSize(size: number) { return size >= 1024 * 1024 ? `${(size / (1024 * 1024)).toFixed(1)} MB` : `${Math.ceil(size / 1024)} KB`; }
 
@@ -81,7 +81,7 @@ onMounted(loadDetail);
   <div class="min-h-screen bg-background md:grid md:grid-cols-[auto_minmax(0,1fr)]">
     <AppSidebar />
     <main class="min-w-0 px-5 py-7 sm:px-7 md:px-8 md:py-9 lg:px-10">
-      <header class="border-b border-border pb-6"><RouterLink class="text-sm font-semibold text-primary-soft hover:text-primary" :to="backTarget">← {{ backLabel }}</RouterLink><div class="mt-4 flex flex-wrap items-start justify-between gap-4"><div><h1 class="text-2xl font-semibold text-primary">Detail Penggantian Biaya</h1><p v-if="request" class="mt-2 text-sm text-text-muted">REQ-{{ request.id }}</p></div><span v-if="request" :class="statusClass(request.status)">{{ statusLabel(request.status) }}</span></div></header>
+      <header class="border-b border-border pb-6"><RouterLink class="text-sm font-semibold text-primary-soft hover:text-primary" :to="backTarget">← {{ backLabel }}</RouterLink><div class="mt-4 flex flex-wrap items-start justify-between gap-4"><div><h1 class="text-2xl font-semibold text-primary">Detail Reimbursement</h1><p v-if="request" class="mt-2 text-sm text-text-muted">REQ-{{ request.id }}</p></div><span v-if="request" :class="statusClass(request.status)">{{ statusLabel(request.status) }}</span></div></header>
       <div v-if="errorMessage" class="mt-5 rounded-lg bg-red-50 px-4 py-3 text-sm text-danger" role="alert">{{ errorMessage }}</div>
       <div v-if="successMessage" class="mt-5 rounded-lg bg-[#e7f2ef] px-4 py-3 text-sm text-success" role="status">{{ successMessage }}</div>
       <p v-if="loading" class="mt-7 text-sm text-text-muted">Memuat detail pengajuan...</p>
@@ -98,7 +98,16 @@ onMounted(loadDetail);
           </section>
           <RequestReviewSection :request-status="request.status" :approvals="request.approvals" @processed="handleApprovalProcessed" />
         </div>
-        <aside class="h-fit rounded-2xl border border-border bg-surface p-5 sm:p-6"><h2 class="text-base font-semibold text-primary">Proses Persetujuan</h2><p v-if="!request.approvals.length" class="mt-4 text-sm text-text-muted">Disetujui otomatis oleh sistem.</p><template v-else><div v-for="step in request.approvals" :key="step.id" class="mt-5 flex gap-3"><span class="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-xs text-white" :class="step.status === 'DISETUJUI' ? 'bg-success' : step.status === 'DITOLAK' ? 'bg-danger' : 'bg-warning'">{{ step.status === 'DISETUJUI' ? '✓' : step.status === 'DITOLAK' ? '×' : '○' }}</span><div><p class="text-sm font-semibold text-primary">Finance Manager</p><p class="mt-1 text-xs text-text-muted">{{ statusLabel(step.status) }}<span v-if="step.reviewedAt"> · {{ formatDateTime(step.reviewedAt) }}</span></p><p v-if="step.reviewNote" class="mt-2 text-xs text-text-muted">“{{ step.reviewNote }}”</p></div></div></template></aside>
+        <aside class="h-fit rounded-2xl border border-border bg-surface p-5 sm:p-6">
+          <h2 class="text-base font-semibold text-primary">Ringkasan</h2>
+          <dl class="mt-5 space-y-4">
+            <div class="flex items-center justify-between gap-4"><dt class="text-sm text-text-muted">Status</dt><dd><span :class="statusClass(request.status)">{{ statusLabel(request.status) }}</span></dd></div>
+            <div class="flex items-start justify-between gap-4 border-t border-border pt-4"><dt class="text-sm text-text-muted">Tipe biaya</dt><dd class="text-right text-sm font-medium text-text">{{ expenseLabel(request.reimbursementRequest.expenseType) }}</dd></div>
+            <div class="flex items-start justify-between gap-4 border-t border-border pt-4"><dt class="text-sm text-text-muted">Diajukan</dt><dd class="text-right text-sm font-medium text-text">{{ formatDate(request.createdAt) }}</dd></div>
+            <div class="flex items-start justify-between gap-4 border-t border-border pt-4"><dt class="text-sm text-text-muted">Nomor</dt><dd class="text-right text-sm font-medium text-text">REQ-{{ request.id }}</dd></div>
+          </dl>
+          <ApprovalProcessSummary :request-status="request.status" :approvals="request.approvals" />
+        </aside>
       </div>
     </main>
     <ConfirmationModal :open="confirmOpen" title="Batalkan pengajuan?" message="Pengajuan yang dibatalkan tidak dapat diproses kembali." confirm-label="Ya, Batalkan" danger :loading="canceling" @close="confirmOpen = false" @confirm="cancelRequest" />

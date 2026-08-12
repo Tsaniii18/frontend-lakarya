@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import AppSidebar from '../../components/AppSidebar.vue';
+import ApprovalProcessSummary from '../../components/ApprovalProcessSummary.vue';
 import ConfirmationModal from '../../components/ConfirmationModal.vue';
 import RequestReviewSection from '../../components/RequestReviewSection.vue';
 import { authState, getApiErrorMessage, getAuthHeaders } from '../../auth/auth';
@@ -56,15 +57,15 @@ const isOwner = computed(
 );
 const detailSource = computed(() => route.query.from);
 const backTarget = computed(() => {
-  if (detailSource.value === 'kelola-pengajuan') return '/kelola-pengajuan';
+  if (detailSource.value === 'kelola-pengajuan') return { path: '/kelola-pengajuan', query: { scope: route.query.scope === 'all' ? 'all' : 'mine' } };
   if (detailSource.value === 'persetujuan') return '/persetujuan';
   return !request.value || isOwner.value ? '/pengajuan' : '/persetujuan';
 });
 const backLabel = computed(() => {
-  if (detailSource.value === 'kelola-pengajuan') return 'Kembali ke Kelola Pengajuan';
+  if (detailSource.value === 'kelola-pengajuan') return 'Kembali ke Pengajuan Karyawan';
   return (!request.value || isOwner.value) && detailSource.value !== 'persetujuan'
-    ? 'Kembali ke Pengajuan'
-    : 'Kembali ke Persetujuan';
+    ? 'Kembali ke Pengajuan Saya'
+    : 'Kembali ke Cuti dan Izin Tim';
 });
 
 function statusLabel(value: RequestStatus) {
@@ -88,12 +89,6 @@ function formatDate(value: string) {
     month: 'long',
     year: 'numeric',
     timeZone: 'UTC',
-  }).format(new Date(value));
-}
-
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat('id-ID', {
-    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   }).format(new Date(value));
 }
 
@@ -186,7 +181,7 @@ onMounted(loadDetail);
         <RouterLink class="text-sm font-semibold text-primary-soft hover:text-primary" :to="backTarget">← {{ backLabel }}</RouterLink>
         <div class="mt-4 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 class="text-2xl font-semibold text-primary">Detail Pengajuan</h1>
+            <h1 class="text-2xl font-semibold text-primary">Detail Cuti</h1>
             <p v-if="request" class="mt-2 text-sm text-text-muted">
               Cuti {{ request.leaveRequest.leaveType === 'TAHUNAN' ? 'Tahunan' : 'Khusus' }} · REQ-{{ request.id }}
             </p>
@@ -252,17 +247,6 @@ onMounted(loadDetail);
             </div>
           </div>
 
-          <div class="mt-6 border-t border-border pt-6">
-            <h3 class="text-sm font-semibold text-primary">Proses Persetujuan</h3>
-            <p v-if="request.approvals.length === 0" class="mt-3 text-sm text-text-muted">{{ request.status === 'DISETUJUI' ? 'Pengajuan disetujui otomatis.' : 'Belum ada tahapan persetujuan.' }}</p>
-            <ol v-else class="mt-4">
-              <li v-for="(step, index) in request.approvals" :key="step.id" class="relative flex gap-3 pb-6 last:pb-0">
-                <span v-if="index < request.approvals.length - 1" class="absolute left-[9px] top-5 h-full w-px bg-border"></span>
-                <span class="relative z-10 mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold" :class="step.status === 'DISETUJUI' ? 'border-success bg-success text-white' : step.status === 'DITOLAK' ? 'border-danger bg-danger text-white' : 'border-primary-soft bg-white text-primary-soft'">{{ step.status === 'DISETUJUI' ? '✓' : step.status === 'DITOLAK' ? '×' : '○' }}</span>
-                <div><p class="text-sm font-semibold text-primary">{{ step.approver.department.name === 'Human Resources' ? 'HR Manager' : `Manager ${step.approver.department.name}` }}</p><p class="mt-1 text-xs" :class="step.status === 'DISETUJUI' ? 'text-success' : step.status === 'DITOLAK' ? 'text-danger' : 'text-text-muted'">{{ statusLabel(step.status) }}<span v-if="step.reviewedAt"> · {{ formatDateTime(step.reviewedAt) }}</span></p><p v-if="step.reviewNote" class="mt-2 text-xs leading-5 text-text-muted">“{{ step.reviewNote }}”</p></div>
-              </li>
-            </ol>
-          </div>
           </section>
 
           <RequestReviewSection
@@ -292,6 +276,8 @@ onMounted(loadDetail);
               <dd class="text-right text-sm font-medium text-text">REQ-{{ request.id }}</dd>
             </div>
           </dl>
+
+          <ApprovalProcessSummary :request-status="request.status" :approvals="request.approvals" />
 
           <div v-if="isOwner && request.status === 'MENUNGGU'" class="mt-6 border-t border-border pt-5">
             <button class="w-full rounded-lg border border-danger px-3 py-2 text-xs font-semibold text-danger hover:bg-red-50" type="button" @click="confirmOpen = true">Batalkan Pengajuan</button>

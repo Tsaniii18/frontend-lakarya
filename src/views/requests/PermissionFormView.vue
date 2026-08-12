@@ -204,7 +204,7 @@ watch(
 
     <main class="min-w-0 px-5 py-7 sm:px-7 md:px-8 md:py-9 lg:px-10">
       <header class="border-b border-border pb-6">
-        <RouterLink class="text-sm font-semibold text-primary-soft hover:text-primary" to="/pengajuan">← Kembali ke Pengajuan</RouterLink>
+        <RouterLink class="text-sm font-semibold text-primary-soft hover:text-primary" to="/pengajuan">← Kembali ke Pengajuan Saya</RouterLink>
         <h1 class="mt-4 text-2xl font-semibold text-primary">Ajukan Izin</h1>
         <p class="mt-2 text-sm text-text-muted">Pilih izin harian atau per jam sesuai kebutuhan Anda.</p>
       </header>
