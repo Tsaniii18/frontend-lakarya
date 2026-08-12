@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import AppSidebar from '../components/AppSidebar.vue';
+import ApprovalIcon from '../components/ApprovalIcon.vue';
+import DashboardEmptyState from '../components/DashboardEmptyState.vue';
 import {
   authState,
   getApiErrorMessage,
@@ -44,6 +46,12 @@ interface ActiveRequestsResponse {
   };
 }
 
+interface PaginatedCountResponse {
+  meta: {
+    total: number;
+  };
+}
+
 type ComplaintStatus = 'TERBUKA' | 'DIPROSES' | 'SELESAI' | 'DITUTUP';
 
 interface RecentComplaint {
@@ -63,13 +71,62 @@ const leaveBalance = ref<LeaveBalance | null>(null);
 const activeRequests = ref<ActiveRequest[]>([]);
 const activeRequestTotal = ref(0);
 const recentComplaints = ref<RecentComplaint[]>([]);
+const pendingApprovalTotal = ref(0);
+const pendingReimbursementTotal = ref(0);
+const pendingUserTotal = ref(0);
 const loadingDashboard = ref(false);
 const dashboardError = ref('');
+const isManager = computed(() => authState.user?.role === 'MANAJER');
 const isHrManager = computed(
   () =>
     authState.user?.role === 'MANAJER' &&
     authState.user.department.name === 'Human Resources',
 );
+const isFinanceManager = computed(
+  () =>
+    authState.user?.role === 'MANAJER' &&
+    authState.user.department.name === 'Finance',
+);
+const dashboardEyebrow = computed(() => {
+  if (!isManager.value) return 'Beranda Karyawan';
+  const department = authState.user?.department.name;
+  if (department === 'Human Resources') return 'Beranda Manajer HR';
+  if (department === 'Finance') return 'Beranda Manajer Keuangan';
+  if (department === 'Information Technology') return 'Beranda Manajer IT';
+  return `Beranda Manajer ${department ?? ''}`.trim();
+});
+const dashboardSubtitle = computed(() =>
+  isManager.value
+    ? `Ringkasan aktivitas Anda dan tanggung jawab tim ${authState.user?.department.name ?? ''}.`
+    : 'Ringkasan aktivitas Anda.',
+);
+const approvalDescription = computed(() => {
+  if (pendingApprovalTotal.value === 0) {
+    return 'Semua pengajuan yang menjadi tanggung jawab Anda sudah ditinjau.';
+  }
+  if (isFinanceManager.value) {
+    return `${pendingApprovalTotal.value} reimbursement karyawan siap Anda tinjau.`;
+  }
+  if (isHrManager.value) {
+    return `${pendingApprovalTotal.value} pengajuan izin atau cuti siap Anda tinjau.`;
+  }
+  return `${pendingApprovalTotal.value} pengajuan tim siap Anda tinjau.`;
+});
+const approvalPath = computed(() => {
+  if (isHrManager.value) return { path: '/kelola-pengajuan', query: { scope: 'mine' } };
+  if (isFinanceManager.value) return { path: '/kelola-reimbursement', query: { scope: 'mine' } };
+  return { path: '/persetujuan' };
+});
+const summaryGridClass = computed(() => {
+  if (!isManager.value) return 'lg:grid-cols-2';
+  if (
+    (isFinanceManager.value && pendingReimbursementTotal.value > 0) ||
+    (isHrManager.value && pendingUserTotal.value > 0)
+  ) {
+    return 'xl:grid-cols-4';
+  }
+  return 'xl:grid-cols-3';
+});
 
 const availablePercentage = computed(() => {
   if (!leaveBalance.value?.totalDays) return 0;
@@ -115,7 +172,7 @@ function requestLabel(request: ActiveRequest) {
       ? 'Izin Per Jam'
       : 'Izin Harian';
   }
-  return 'Penggantian Biaya';
+  return 'Reimbursement';
 }
 
 function formatDate(value: string) {
@@ -153,7 +210,7 @@ function requestSummary(request: ActiveRequest) {
 function requestDetailPath(request: ActiveRequest) {
   if (request.type === 'CUTI') return `/pengajuan/cuti/${request.id}`;
   if (request.type === 'IZIN') return `/pengajuan/izin/${request.id}`;
-  return '';
+  return `/pengajuan/reimbursement/${request.id}`;
 }
 
 function complaintStatusLabel(value: ComplaintStatus) {
@@ -185,7 +242,42 @@ async function loadDashboardData() {
     const complaintEndpoint = isHrManager.value
       ? '/manage/complaints'
       : '/complaints';
-    const [balanceResponse, requestsResponse, complaintsResponse] = await Promise.all([
+    const roleRequests: Promise<unknown>[] = [];
+
+    if (isManager.value) {
+      roleRequests.push(
+        api.get<PaginatedCountResponse>('/approvals', {
+          headers: getAuthHeaders(),
+          params: { page: 1, limit: 1, status: 'MENUNGGU' },
+        }).then((response) => {
+          pendingApprovalTotal.value = response.data.meta.total;
+        }),
+      );
+    }
+
+    if (isFinanceManager.value) {
+      roleRequests.push(
+        api.get<PaginatedCountResponse>('/manage/reimbursements', {
+          headers: getAuthHeaders(),
+          params: { page: 1, limit: 1, status: 'MENUNGGU' },
+        }).then((response) => {
+          pendingReimbursementTotal.value = response.data.meta.total;
+        }),
+      );
+    }
+
+    if (isHrManager.value) {
+      roleRequests.push(
+        api.get<PaginatedCountResponse>('/users', {
+          headers: getAuthHeaders(),
+          params: { page: 1, limit: 1, status: 'MENUNGGU' },
+        }).then((response) => {
+          pendingUserTotal.value = response.data.meta.total;
+        }),
+      );
+    }
+
+    const coreResponses = Promise.all([
       api.get<LeaveBalance>('/leave/balance', {
         headers: getAuthHeaders(),
       }),
@@ -208,7 +300,9 @@ async function loadDashboardData() {
           order: 'desc',
         },
       }),
-    ]);
+    ] as const);
+    const [[balanceResponse, requestsResponse, complaintsResponse]] =
+      await Promise.all([coreResponses, Promise.all(roleRequests)]);
 
     leaveBalance.value = balanceResponse.data;
     activeRequests.value = requestsResponse.data.data;
@@ -251,9 +345,9 @@ onBeforeUnmount(() => {
     <main class="min-w-0 px-5 py-7 sm:px-7 md:px-8 md:py-9 lg:px-10">
       <header class="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p class="text-sm font-medium text-primary-soft">Beranda Karyawan</p>
+          <p class="text-sm font-medium text-primary-soft">{{ dashboardEyebrow }}</p>
           <h1 class="mt-1 text-2xl font-semibold text-primary">Selamat datang, {{ authState.user?.name }}</h1>
-          <p class="mt-2 text-sm text-text-muted">Ringkasan aktivitas Anda.</p>
+          <p class="mt-2 text-sm text-text-muted">{{ dashboardSubtitle }}</p>
         </div>
 
         <div class="flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2.5 sm:max-w-xs">
@@ -277,7 +371,7 @@ onBeforeUnmount(() => {
         {{ dashboardError }}
       </div>
 
-      <div class="mt-7 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+      <div class="mt-7 grid gap-5 sm:grid-cols-2" :class="summaryGridClass">
         <section class="rounded-2xl border border-border bg-surface p-5 sm:p-6">
           <div class="flex items-start justify-between gap-4">
             <div>
@@ -337,7 +431,7 @@ onBeforeUnmount(() => {
         <section class="rounded-2xl border border-border bg-surface p-5 sm:p-6">
           <div class="flex items-center justify-between gap-4">
             <div>
-              <p class="text-sm font-medium text-text-muted">Pengajuan Aktif</p>
+              <p class="text-sm font-medium text-text-muted">Pengajuan Aktif Saya</p>
               <p class="mt-3 text-4xl font-semibold tracking-tight text-primary">{{ loadingDashboard ? '—' : activeRequestTotal }}</p>
             </div>
             <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#f8efdf] text-[#9a6824]">
@@ -347,19 +441,76 @@ onBeforeUnmount(() => {
               </svg>
             </span>
           </div>
-          <p class="mt-6 text-sm leading-6 text-text-muted">
+          <p class="mt-5 text-sm leading-6 text-text-muted">
             {{ activeRequestTotal > 0
               ? `${activeRequestTotal} pengajuan sedang menunggu proses persetujuan.`
-              : 'Tidak ada pengajuan yang sedang menunggu persetujuan.' }}
+              : 'Semua pengajuan Anda sudah selesai diproses.' }}
           </p>
         </section>
+
+        <RouterLink
+          v-if="isManager"
+          class="group rounded-2xl border border-border bg-surface p-5 hover:border-primary-soft hover:shadow-[0_10px_28px_rgba(15,39,71,0.08)] sm:p-6"
+          :to="approvalPath"
+        >
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <p class="text-sm font-medium text-text-muted">Perlu Persetujuan Anda</p>
+              <p class="mt-3 text-4xl font-semibold tracking-tight text-primary">{{ loadingDashboard ? '—' : pendingApprovalTotal }}</p>
+            </div>
+            <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#e7f2ef] text-success">
+              <ApprovalIcon class="h-6 w-6" />
+            </span>
+          </div>
+          <p class="mt-5 text-sm leading-6 text-text-muted">{{ approvalDescription }}</p>
+          <span v-if="pendingApprovalTotal > 0" class="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary-soft">
+            Buka persetujuan
+            <svg class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+          </span>
+        </RouterLink>
+
+        <RouterLink
+          v-if="isFinanceManager && pendingReimbursementTotal > 0"
+          class="group rounded-2xl border border-border bg-surface p-5 hover:border-warning hover:shadow-[0_10px_28px_rgba(15,39,71,0.08)] sm:p-6"
+          :to="{ path: '/kelola-reimbursement', query: { scope: 'mine' } }"
+        >
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <p class="text-sm font-medium text-text-muted">Reimbursement untuk Anda Tinjau</p>
+              <p class="mt-3 text-4xl font-semibold tracking-tight text-primary">{{ pendingReimbursementTotal }}</p>
+            </div>
+            <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#f8efdf] text-warning">
+              <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2" /><path d="M7 10h10M7 14h6" /></svg>
+            </span>
+          </div>
+          <p class="mt-5 text-sm leading-6 text-text-muted">{{ pendingReimbursementTotal }} reimbursement karyawan menunggu keputusan Anda.</p>
+          <span class="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary-soft">Tinjau reimbursement <svg class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg></span>
+        </RouterLink>
+
+        <RouterLink
+          v-if="isHrManager && pendingUserTotal > 0"
+          class="group rounded-2xl border border-border bg-surface p-5 hover:border-primary-soft hover:shadow-[0_10px_28px_rgba(15,39,71,0.08)] sm:p-6"
+          to="/kelola-pengguna"
+        >
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <p class="text-sm font-medium text-text-muted">Akun Baru untuk Anda Verifikasi</p>
+              <p class="mt-3 text-4xl font-semibold tracking-tight text-primary">{{ pendingUserTotal }}</p>
+            </div>
+            <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#e9f0f7] text-primary-soft">
+              <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10" cy="8" r="3" /><path d="M4.5 19c.5-3.5 2.4-5.5 5.5-5.5 1.2 0 2.3.3 3.1.9M17 11v6M14 14h6" /></svg>
+            </span>
+          </div>
+          <p class="mt-5 text-sm leading-6 text-text-muted">{{ pendingUserTotal }} akun karyawan baru menunggu verifikasi Anda.</p>
+          <span class="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary-soft">Tinjau akun karyawan <svg class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg></span>
+        </RouterLink>
       </div>
 
       <section class="mt-5 rounded-2xl border border-border bg-surface p-5 sm:p-6">
         <div class="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 class="text-lg font-semibold text-primary">Pengajuan Aktif Terbaru</h2>
-            <p class="mt-1 text-sm text-text-muted">Pengajuan yang masih menunggu persetujuan.</p>
+            <h2 class="text-lg font-semibold text-primary">Pengajuan Aktif Saya</h2>
+            <p class="mt-1 text-sm text-text-muted">Pengajuan Anda yang masih menunggu proses persetujuan.</p>
           </div>
           <RouterLink
             class="rounded-lg border border-primary-soft px-3 py-2 text-xs font-semibold text-primary-soft hover:bg-[#e9f0f7]"
@@ -369,20 +520,40 @@ onBeforeUnmount(() => {
           </RouterLink>
         </div>
 
-        <div class="mt-5 divide-y divide-border">
+        <div class="mt-5">
           <p v-if="loadingDashboard" class="py-5 text-sm text-text-muted">Memuat pengajuan aktif...</p>
-          <p v-else-if="activeRequests.length === 0" class="py-5 text-sm text-text-muted">Tidak ada pengajuan yang sedang menunggu.</p>
+          <DashboardEmptyState
+            v-else-if="activeRequests.length === 0"
+            icon="request"
+            title="Tidak ada pengajuan aktif"
+            description="Pengajuan yang sedang menunggu persetujuan akan tampil di sini."
+          />
           <template v-else>
             <div
               v-for="request in activeRequests"
               :key="request.id"
-              class="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+              class="flex flex-col gap-3 border-b border-border py-4 first:pt-0 last:border-b-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
             >
               <div class="flex items-center gap-3">
-                <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#e9f0f7] text-primary-soft">
-                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <span
+                  class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+                  :class="request.type === 'CUTI'
+                    ? 'bg-[#e9f0f7] text-primary-soft'
+                    : request.type === 'IZIN'
+                      ? 'bg-[#e7f2ef] text-success'
+                      : 'bg-[#f8efdf] text-warning'"
+                >
+                  <svg v-if="request.type === 'CUTI'" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                     <path d="M7 3v3M17 3v3M4 9h16" />
                     <rect x="4" y="5" width="16" height="15" rx="2" />
+                  </svg>
+                  <svg v-else-if="request.type === 'IZIN'" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <circle cx="12" cy="12" r="8.5" />
+                    <path d="M12 7.5V12l3 2" />
+                  </svg>
+                  <svg v-else class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <rect x="4" y="5" width="16" height="14" rx="2" />
+                    <path d="M8 10h8M8 14h5" />
                   </svg>
                 </span>
                 <div>
@@ -391,11 +562,7 @@ onBeforeUnmount(() => {
                 </div>
               </div>
               <div class="flex items-center gap-3 self-start sm:self-auto">
-                <RouterLink
-                  v-if="requestDetailPath(request)"
-                  class="text-xs font-semibold text-primary-soft hover:text-primary"
-                  :to="requestDetailPath(request)"
-                >
+                <RouterLink class="text-xs font-semibold text-primary-soft hover:text-primary" :to="requestDetailPath(request)">
                   Lihat detail
                 </RouterLink>
                 <span class="status-warning">Menunggu</span>
@@ -405,27 +572,33 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <section v-if="loadingDashboard || recentComplaints.length" class="mt-5 rounded-2xl border border-border bg-surface p-5 sm:p-6">
+      <section class="mt-5 rounded-2xl border border-border bg-surface p-5 sm:p-6">
         <div class="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 class="text-lg font-semibold text-primary">{{ isHrManager ? 'Keluhan Masuk Terbaru' : 'Keluhan Terbaru' }}</h2>
+            <h2 class="text-lg font-semibold text-primary">{{ isHrManager ? 'Keluhan Karyawan Terbaru' : 'Keluhan Saya Terbaru' }}</h2>
             <p class="mt-1 text-sm text-text-muted">{{ isHrManager ? 'Keluhan karyawan yang baru disampaikan.' : 'Perkembangan keluhan yang Anda sampaikan.' }}</p>
           </div>
           <RouterLink
             class="rounded-lg border border-primary-soft px-3 py-2 text-xs font-semibold text-primary-soft hover:bg-[#e9f0f7]"
             :to="isHrManager ? '/kelola-keluhan' : '/keluhan'"
           >
-            Lihat Semua Keluhan
+            {{ isHrManager ? 'Lihat Semua Keluhan Karyawan' : 'Lihat Semua Keluhan Saya' }}
           </RouterLink>
         </div>
 
-        <div class="mt-5 divide-y divide-border">
+        <div class="mt-5">
           <p v-if="loadingDashboard" class="py-5 text-sm text-text-muted">Memuat keluhan terbaru...</p>
+          <DashboardEmptyState
+            v-else-if="recentComplaints.length === 0"
+            icon="complaint"
+            :title="isHrManager ? 'Belum ada keluhan masuk' : 'Belum ada keluhan'"
+            :description="isHrManager ? 'Keluhan baru dari karyawan akan tampil di sini.' : 'Keluhan yang Anda sampaikan beserta perkembangannya akan tampil di sini.'"
+          />
           <template v-else>
             <div
               v-for="complaint in recentComplaints"
               :key="complaint.id"
-              class="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+              class="flex flex-col gap-3 border-b border-border py-4 first:pt-0 last:border-b-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
             >
               <div class="flex items-center gap-3">
                 <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#eef3f1] text-primary-soft">

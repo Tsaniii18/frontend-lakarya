@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AppSidebar from '../../components/AppSidebar.vue';
 import ConfirmationModal from '../../components/ConfirmationModal.vue';
+import DataListCard from '../../components/DataListCard.vue';
+import DataPagination from '../../components/DataPagination.vue';
+import ListState from '../../components/ListState.vue';
+import PortalPageHeader from '../../components/PortalPageHeader.vue';
+import StatusBadge from '../../components/StatusBadge.vue';
 import { authState, getApiErrorMessage, getAuthHeaders } from '../../auth/auth';
 import api from '../../lib/api';
 
@@ -115,10 +120,10 @@ function statusLabel(statusValue: UserItem['accountStatus']) {
   }[statusValue];
 }
 
-function statusClass(statusValue: UserItem['accountStatus']) {
-  if (statusValue === 'AKTIF') return 'status-success';
-  if (statusValue === 'MENUNGGU') return 'status-warning';
-  return 'status-danger';
+function statusTone(statusValue: UserItem['accountStatus']) {
+  if (statusValue === 'AKTIF') return 'success' as const;
+  if (statusValue === 'MENUNGGU') return 'warning' as const;
+  return 'danger' as const;
 }
 
 async function loadUsers() {
@@ -230,6 +235,10 @@ watch([department, status, sort, order], () => {
   void loadUsers();
 });
 
+onBeforeUnmount(() => {
+  if (searchTimer) clearTimeout(searchTimer);
+});
+
 onMounted(loadUsers);
 </script>
 
@@ -238,20 +247,22 @@ onMounted(loadUsers);
     <AppSidebar />
 
     <main class="min-w-0 px-5 py-7 sm:px-7 md:px-8 md:py-9 lg:px-10">
-      <header class="border-b border-border pb-6">
-        <p class="text-sm font-medium text-primary-soft">Human Resources</p>
-        <h1 class="mt-1 text-2xl font-semibold text-primary">Kelola Pengguna</h1>
-        <p class="mt-2 text-sm text-text-muted">Tinjau status dan kelola akun karyawan.</p>
-      </header>
+      <PortalPageHeader
+        eyebrow="Kelola HR"
+        title="Akun Karyawan"
+        description="Tinjau dan kelola akses akun seluruh karyawan dari satu tempat."
+      />
 
-      <section class="data-card">
-        <div class="data-card-heading">
-          <div><h2 class="text-base font-semibold text-primary">Daftar Pengguna</h2><p class="mt-1 text-sm text-text-muted">Cari pengguna dan kelola status akun dari satu tempat.</p></div>
-          <span class="data-count">{{ meta.total }} pengguna</span>
-        </div>
-        <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_220px_190px]">
+      <DataListCard
+        title="Semua Akun Karyawan"
+        description="Cari karyawan, periksa informasi akun, lalu lakukan tindakan sesuai statusnya."
+        :count="meta.total"
+        count-label="akun"
+      >
+        <template #filters>
+          <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_220px_190px]">
           <label>
-            <span class="form-label">Cari pengguna</span>
+            <span class="form-label">Cari karyawan</span>
             <input
               v-model="search"
               class="form-input"
@@ -279,7 +290,8 @@ onMounted(loadUsers);
             </select>
           </label>
 
-        </div>
+          </div>
+        </template>
 
         <div v-if="errorMessage" class="mt-4 flex items-start justify-between gap-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-danger" role="alert">
           <p>{{ errorMessage }}</p>
@@ -328,12 +340,14 @@ onMounted(loadUsers);
               </tr>
             </thead>
             <tbody>
-              <tr v-if="loading" class="data-state-row">
-                <td class="py-10 text-center text-text-muted" colspan="7">Memuat pengguna...</td>
-              </tr>
-              <tr v-else-if="users.length === 0" class="data-state-row">
-                <td class="py-10 text-center" colspan="7"><p class="font-medium text-primary">Pengguna tidak ditemukan.</p><p class="mt-1 text-sm text-text-muted">Coba ubah kata pencarian atau filter yang dipilih.</p></td>
-              </tr>
+              <ListState v-if="loading" :colspan="7" loading loading-text="Memuat akun karyawan..." />
+              <ListState
+                v-else-if="users.length === 0"
+                :colspan="7"
+                icon="people"
+                title="Akun karyawan tidak ditemukan"
+                description="Coba ubah nama, email, atau filter yang dipilih."
+              />
               <template v-else>
                 <tr v-for="user in users" :key="user.id" class="text-text">
                   <td class="px-4 py-4 font-medium text-primary">{{ user.name }}</td>
@@ -342,7 +356,7 @@ onMounted(loadUsers);
                   <td class="px-4 py-4">{{ user.department.name }}</td>
                   <td class="px-4 py-4">{{ user.role === 'MANAJER' ? 'Manajer' : 'Staf' }}</td>
                   <td class="px-4 py-4">
-                    <span :class="statusClass(user.accountStatus)">{{ statusLabel(user.accountStatus) }}</span>
+                    <StatusBadge :label="statusLabel(user.accountStatus)" :tone="statusTone(user.accountStatus)" />
                   </td>
                   <td class="px-4 py-4">
                     <div v-if="user.id !== authState.user?.id" class="flex justify-end gap-2">
@@ -395,29 +409,10 @@ onMounted(loadUsers);
           </table>
         </div>
 
-        <div class="data-pagination">
-          <p>Halaman {{ meta.page }} dari {{ meta.totalPages }}</p>
-          <div class="flex items-center gap-3">
-            <button
-              class="secondary-button min-h-9 px-3 py-2"
-              type="button"
-              :disabled="meta.page <= 1 || loading"
-              @click="changePage(meta.page - 1)"
-            >
-              Sebelumnya
-            </button>
-            <span class="whitespace-nowrap text-text-muted">{{ meta.page }} / {{ meta.totalPages }}</span>
-            <button
-              class="secondary-button min-h-9 px-3 py-2"
-              type="button"
-              :disabled="meta.page >= meta.totalPages || loading"
-              @click="changePage(meta.page + 1)"
-            >
-              Berikutnya
-            </button>
-          </div>
-        </div>
-      </section>
+        <template #pagination>
+          <DataPagination :page="meta.page" :total-pages="meta.totalPages" :loading="loading" @change="changePage" />
+        </template>
+      </DataListCard>
     </main>
 
     <ConfirmationModal

@@ -2,6 +2,11 @@
 import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AppSidebar from '../../components/AppSidebar.vue';
+import DataListCard from '../../components/DataListCard.vue';
+import DataPagination from '../../components/DataPagination.vue';
+import ListState from '../../components/ListState.vue';
+import PortalPageHeader from '../../components/PortalPageHeader.vue';
+import StatusBadge from '../../components/StatusBadge.vue';
 import { getApiErrorMessage, getAuthHeaders } from '../../auth/auth';
 import api from '../../lib/api';
 
@@ -68,7 +73,7 @@ function typeLabel(request: RequestItem) {
       ? 'Izin Per Jam'
       : 'Izin Harian';
   }
-  return 'Penggantian Biaya';
+  return 'Reimbursement';
 }
 
 function statusLabel(value: RequestStatus) {
@@ -80,10 +85,10 @@ function statusLabel(value: RequestStatus) {
   }[value];
 }
 
-function statusClass(value: RequestStatus) {
-  if (value === 'MENUNGGU') return 'status-warning';
-  if (value === 'DISETUJUI') return 'status-success';
-  return 'status-danger';
+function statusTone(value: RequestStatus) {
+  if (value === 'MENUNGGU') return 'warning' as const;
+  if (value === 'DISETUJUI') return 'success' as const;
+  return 'danger' as const;
 }
 
 function formatDate(value: string) {
@@ -177,12 +182,8 @@ onMounted(loadRequests);
     <AppSidebar />
 
     <main class="min-w-0 px-5 py-7 sm:px-7 md:px-8 md:py-9 lg:px-10">
-      <header class="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p class="text-sm font-medium text-primary-soft">Portal Karyawan</p>
-          <h1 class="mt-1 text-2xl font-semibold text-primary">Pengajuan</h1>
-          <p class="mt-2 text-sm text-text-muted">Pantau cuti, izin, dan reimbursement Anda.</p>
-        </div>
+      <PortalPageHeader eyebrow="Portal Karyawan" title="Pengajuan Saya" description="Pantau cuti, izin, dan reimbursement Anda dari satu tempat.">
+        <template #actions>
         <div class="group relative self-start sm:self-auto">
           <button class="primary-button gap-2" type="button" aria-haspopup="menu">
             Ajukan
@@ -213,21 +214,18 @@ onMounted(loadRequests);
             </div>
           </div>
         </div>
-      </header>
+        </template>
+      </PortalPageHeader>
 
-      <section class="data-card">
-        <div class="data-card-heading">
-          <div><h2 class="text-base font-semibold text-primary">Riwayat Pengajuan</h2><p class="mt-1 text-sm text-text-muted">Temukan pengajuan berdasarkan jenis, status, atau waktu pengajuan.</p></div>
-          <span class="data-count">{{ meta.total }} pengajuan</span>
-        </div>
-        <div class="mt-5 grid gap-3 md:grid-cols-3">
+      <DataListCard title="Riwayat Pengajuan Saya" description="Temukan pengajuan Anda berdasarkan jenis, status, atau waktu pengajuan." :count="meta.total" count-label="pengajuan">
+        <template #filters><div class="grid gap-3 md:grid-cols-3">
           <label>
             <span class="form-label">Jenis</span>
             <select v-model="type" class="form-input">
               <option value="">Semua jenis</option>
               <option value="CUTI">Cuti</option>
               <option value="IZIN">Izin</option>
-              <option value="PENGGANTIAN_BIAYA">Penggantian Biaya</option>
+              <option value="PENGGANTIAN_BIAYA">Reimbursement</option>
             </select>
           </label>
           <label>
@@ -247,7 +245,7 @@ onMounted(loadRequests);
               <option value="asc">Terlama</option>
             </select>
           </label>
-        </div>
+        </div></template>
 
         <div v-if="errorMessage" class="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-danger" role="alert">
           {{ errorMessage }}
@@ -265,15 +263,8 @@ onMounted(loadRequests);
               </tr>
             </thead>
             <tbody>
-              <tr v-if="loading" class="data-state-row">
-                <td class="py-10 text-center text-text-muted" colspan="5">Memuat pengajuan...</td>
-              </tr>
-              <tr v-else-if="requests.length === 0" class="data-state-row">
-                <td class="py-10 text-center" colspan="5">
-                  <p class="font-medium text-primary">Belum ada pengajuan.</p>
-                  <p class="mt-1 text-sm text-text-muted">Buat pengajuan baru atau ubah filter yang sedang digunakan.</p>
-                </td>
-              </tr>
+              <ListState v-if="loading" :colspan="5" loading loading-text="Memuat pengajuan..." />
+              <ListState v-else-if="requests.length === 0" :colspan="5" icon="document" title="Belum ada pengajuan" description="Buat pengajuan baru atau ubah filter yang sedang digunakan." />
               <template v-else>
                 <tr v-for="request in requests" :key="request.id" class="text-text hover:bg-surface-soft">
                   <td class="px-4 py-4">
@@ -282,7 +273,7 @@ onMounted(loadRequests);
                   </td>
                   <td class="px-4 py-4 text-text-muted">{{ summary(request) }}</td>
                   <td class="px-4 py-4 text-text-muted">{{ formatDate(request.createdAt) }}</td>
-                  <td class="px-4 py-4"><span :class="statusClass(request.status)">{{ statusLabel(request.status) }}</span></td>
+                  <td class="px-4 py-4"><StatusBadge :label="statusLabel(request.status)" :tone="statusTone(request.status)" /></td>
                   <td class="px-4 py-4 text-right">
                     <button
                       class="table-action-link"
@@ -298,14 +289,8 @@ onMounted(loadRequests);
           </table>
         </div>
 
-        <div class="data-pagination">
-          <p>Halaman {{ meta.page }} dari {{ meta.totalPages }}</p>
-          <div class="flex items-center gap-3">
-            <button class="secondary-button min-h-9 px-3 py-2" type="button" :disabled="meta.page <= 1 || loading" @click="changePage(meta.page - 1)">Sebelumnya</button>
-            <button class="secondary-button min-h-9 px-3 py-2" type="button" :disabled="meta.page >= meta.totalPages || loading" @click="changePage(meta.page + 1)">Berikutnya</button>
-          </div>
-        </div>
-      </section>
+        <template #pagination><DataPagination :page="meta.page" :total-pages="meta.totalPages" :loading="loading" @change="changePage" /></template>
+      </DataListCard>
     </main>
   </div>
 </template>

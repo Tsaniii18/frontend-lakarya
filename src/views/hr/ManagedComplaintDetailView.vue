@@ -117,7 +117,7 @@ onMounted(loadDetail);
   <div class="min-h-screen bg-background md:grid md:grid-cols-[auto_minmax(0,1fr)]">
     <AppSidebar />
     <main class="min-w-0 px-5 py-7 sm:px-7 md:px-8 md:py-9 lg:px-10">
-      <header class="border-b border-border pb-6"><RouterLink class="text-sm font-semibold text-primary-soft hover:text-primary" to="/kelola-keluhan">← Kembali ke Keluhan Masuk</RouterLink><div class="mt-4 flex flex-wrap items-start justify-between gap-4"><div><h1 class="text-2xl font-semibold text-primary">Penanganan Keluhan</h1><p v-if="complaint" class="mt-2 text-sm text-text-muted">KLH-{{ complaint.id }}</p></div><span v-if="complaint" :class="statusClass(complaint.status)">{{ statusLabel(complaint.status) }}</span></div></header>
+      <header class="border-b border-border pb-6"><RouterLink class="text-sm font-semibold text-primary-soft hover:text-primary" to="/kelola-keluhan">← Kembali ke Keluhan Karyawan</RouterLink><div class="mt-4 flex flex-wrap items-start justify-between gap-4"><div><h1 class="text-2xl font-semibold text-primary">Detail Keluhan Karyawan</h1><p v-if="complaint" class="mt-2 text-sm text-text-muted">KLH-{{ complaint.id }}</p></div><span v-if="complaint" :class="statusClass(complaint.status)">{{ statusLabel(complaint.status) }}</span></div></header>
       <div v-if="errorMessage" class="mt-5 rounded-lg bg-red-50 px-4 py-3 text-sm text-danger" role="alert">{{ errorMessage }}</div>
       <div v-if="successMessage" class="mt-5 flex items-center justify-between gap-4 rounded-lg bg-[#e7f2ef] px-4 py-3 text-sm text-success" role="status">
         <span>{{ successMessage }}</span>
@@ -125,16 +125,71 @@ onMounted(loadDetail);
       </div>
       <p v-if="loading" class="mt-7 text-sm text-text-muted">Memuat detail keluhan...</p>
       <div v-else-if="complaint" class="mt-7 grid gap-5 lg:grid-cols-[minmax(0,1fr)_390px]">
-        <div>
+        <div class="space-y-5">
           <section class="rounded-2xl border border-border bg-surface p-5 sm:p-6">
             <h2 class="text-lg font-semibold text-primary">{{ complaint.subject }}</h2>
             <dl class="mt-5 grid overflow-hidden rounded-xl border border-border bg-surface-soft sm:grid-cols-3"><div class="p-4 sm:border-r sm:border-border"><dt class="text-xs uppercase tracking-wide text-text-muted">Pelapor</dt><dd class="mt-2 text-sm font-semibold text-primary">{{ complaint.reporter.name }}</dd><dd class="mt-1 text-xs text-text-muted">{{ complaint.reporter.employeeNumber }} · {{ complaint.reporter.department.name }}</dd></div><div class="border-t border-border p-4 sm:border-r sm:border-t-0"><dt class="text-xs uppercase tracking-wide text-text-muted">Kategori</dt><dd class="mt-2 text-sm font-medium text-text">{{ categoryLabel(complaint.category) }}</dd></div><div class="border-t border-border p-4 sm:border-t-0"><dt class="text-xs uppercase tracking-wide text-text-muted">Disampaikan</dt><dd class="mt-2 text-sm font-medium text-text">{{ formatDate(complaint.createdAt) }}</dd></div></dl>
             <div class="mt-5"><p class="text-xs uppercase tracking-wide text-text-muted">Deskripsi</p><p class="mt-2 whitespace-pre-wrap rounded-xl bg-surface-soft px-4 py-3.5 text-sm leading-6 text-text">{{ complaint.description }}</p></div>
             <div class="mt-6 border-t border-border pt-6"><h3 class="text-sm font-semibold text-primary">Lampiran</h3><p v-if="!complaint.attachments.length" class="mt-3 text-sm text-text-muted">Tidak ada lampiran.</p><div v-else class="mt-3 divide-y divide-border rounded-xl border border-border"><div v-for="file in complaint.attachments" :key="file.id" class="flex items-center justify-between gap-3 px-4 py-3"><div class="min-w-0"><p class="truncate text-sm font-medium text-text">{{ file.fileName }}</p><p class="mt-1 text-xs text-text-muted">{{ formatFileSize(file.sizeByte) }}</p></div><button class="rounded-lg border border-primary-soft px-3 py-2 text-xs font-semibold text-primary-soft" type="button" @click="previewAttachment(file.id)">Lihat</button></div></div></div>
           </section>
+
+          <section class="rounded-2xl border border-border bg-surface p-5 sm:p-6">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 class="text-base font-semibold text-primary">Status Penanganan</h2>
+                <p class="mt-1 text-sm text-text-muted">Perbarui tahap penanganan dan berikan catatan yang jelas.</p>
+              </div>
+              <span :class="statusClass(complaint.status)">{{ statusLabel(complaint.status) }}</span>
+            </div>
+
+            <dl class="mt-5 grid overflow-hidden rounded-xl border border-border bg-surface-soft sm:grid-cols-3">
+              <div class="p-4 sm:border-r sm:border-border">
+                <dt class="text-xs uppercase tracking-wide text-text-muted">Aktivitas HR terakhir</dt>
+                <dd class="mt-2 text-sm font-medium text-text">{{ lastHrActor?.name ?? 'Belum ditangani HR' }}</dd>
+              </div>
+              <div class="border-t border-border p-4 sm:border-r sm:border-t-0">
+                <dt class="text-xs uppercase tracking-wide text-text-muted">Mulai ditinjau</dt>
+                <dd class="mt-2 text-sm text-text">{{ firstProcessingActivity ? formatDate(firstProcessingActivity.createdAt) : 'Belum ditinjau' }}</dd>
+              </div>
+              <div class="border-t border-border p-4 sm:border-t-0">
+                <dt class="text-xs uppercase tracking-wide text-text-muted">Penyelesaian terakhir</dt>
+                <dd class="mt-2 whitespace-pre-wrap text-sm leading-6 text-text">{{ latestResolutionActivity?.note ?? 'Belum ada catatan penyelesaian.' }}</dd>
+              </div>
+            </dl>
+
+            <div v-if="nextActions.length" class="mt-6 border-t border-border pt-5">
+              <label>
+                <span class="form-label">Catatan perubahan status</span>
+                <textarea
+                  ref="activityNoteInput"
+                  v-model="activityNote"
+                  class="form-input min-h-28 resize-y"
+                  :class="{ 'border-danger': activityError }"
+                  placeholder="Tuliskan catatan untuk tahap berikutnya"
+                  :aria-invalid="Boolean(activityError)"
+                  aria-describedby="activity-note-error"
+                  @input="activityError = ''"
+                ></textarea>
+              </label>
+              <p v-if="activityError" id="activity-note-error" class="mt-2 text-sm text-danger" role="alert">{{ activityError }}</p>
+              <div class="mt-4 flex justify-end">
+                <button
+                  v-for="action in nextActions"
+                  :key="action.status"
+                  class="primary-button"
+                  type="button"
+                  :disabled="processing"
+                  @click="updateComplaint(action.status)"
+                >
+                  {{ action.label }}
+                </button>
+              </div>
+            </div>
+            <p v-else-if="complaint.status === 'SELESAI'" class="mt-6 rounded-xl bg-surface-soft p-4 text-sm leading-6 text-text-muted">Penanganan telah selesai dan sedang menunggu konfirmasi dari pelapor.</p>
+            <p v-else class="mt-6 rounded-xl bg-surface-soft p-4 text-sm text-text-muted">Keluhan telah ditutup oleh pelapor.</p>
+          </section>
         </div>
         <aside class="h-fit space-y-5">
-          <section class="rounded-2xl border border-border bg-surface p-5 sm:p-6"><h2 class="text-base font-semibold text-primary">Status Penanganan</h2><dl class="mt-5 space-y-4"><div><dt class="text-xs uppercase tracking-wide text-text-muted">Aktivitas HR terakhir</dt><dd class="mt-2 text-sm font-medium text-text">{{ lastHrActor?.name ?? 'Belum ditangani HR' }}</dd></div><div class="border-t border-border pt-4"><dt class="text-xs uppercase tracking-wide text-text-muted">Mulai ditinjau</dt><dd class="mt-2 text-sm text-text">{{ firstProcessingActivity ? formatDate(firstProcessingActivity.createdAt) : 'Belum ditinjau' }}</dd></div><div class="border-t border-border pt-4"><dt class="text-xs uppercase tracking-wide text-text-muted">Penyelesaian terakhir</dt><dd class="mt-2 whitespace-pre-wrap text-sm leading-6 text-text">{{ latestResolutionActivity?.note ?? 'Belum ada catatan penyelesaian.' }}</dd></div></dl><div v-if="nextActions.length" class="mt-6 border-t border-border pt-5"><label><span class="form-label">Catatan perubahan status</span><textarea ref="activityNoteInput" v-model="activityNote" class="form-input min-h-28 resize-y" :class="{ 'border-danger': activityError }" placeholder="Tuliskan catatan untuk tahap berikutnya" :aria-invalid="Boolean(activityError)" aria-describedby="activity-note-error" @input="activityError = ''"></textarea></label><p v-if="activityError" id="activity-note-error" class="mt-2 text-sm text-danger" role="alert">{{ activityError }}</p><div class="mt-4 space-y-3"><button v-for="action in nextActions" :key="action.status" class="primary-button w-full" type="button" :disabled="processing" @click="updateComplaint(action.status)">{{ action.label }}</button></div></div><p v-else-if="complaint.status === 'SELESAI'" class="mt-6 rounded-xl bg-surface-soft p-4 text-sm leading-6 text-text-muted">Penanganan telah selesai dan sedang menunggu konfirmasi dari pelapor.</p><p v-else class="mt-6 rounded-xl bg-surface-soft p-4 text-sm text-text-muted">Keluhan telah ditutup oleh pelapor.</p></section>
           <section class="flex h-[430px] flex-col rounded-2xl border border-border bg-surface p-5 sm:h-[460px] sm:p-6"><div class="shrink-0"><h2 class="text-base font-semibold text-primary">Riwayat Penanganan</h2><p class="mt-1 text-sm text-text-muted">Paling lama di atas. Geser untuk melihat tahap berikutnya.</p></div><div class="complaint-timeline-scroll mt-5 min-h-0 flex-1 space-y-5 overflow-y-auto pr-2"><div v-for="activity in activityHistory" :key="activity.id" class="relative pl-6 before:absolute before:left-[6px] before:top-5 before:h-[calc(100%+4px)] before:w-px before:bg-border last:before:hidden"><span class="absolute left-0 top-1.5 h-3 w-3 rounded-full border-2 border-surface bg-primary-soft"></span><p class="text-sm font-semibold text-primary">{{ activityLabel(activity) }}</p><p class="mt-1 text-xs text-text-muted">{{ activity.actor.name }} · {{ formatDate(activity.createdAt) }}</p><p class="mt-2 whitespace-pre-wrap rounded-lg bg-surface-soft px-3 py-2.5 text-sm leading-6 text-text">{{ activity.note }}</p></div></div></section>
         </aside>
       </div>

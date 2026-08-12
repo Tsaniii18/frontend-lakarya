@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import AppSidebar from '../../components/AppSidebar.vue';
-import { getApiErrorMessage, getAuthHeaders } from '../../auth/auth';
+import DataListCard from '../../components/DataListCard.vue';
+import DataPagination from '../../components/DataPagination.vue';
+import ListState from '../../components/ListState.vue';
+import PortalPageHeader from '../../components/PortalPageHeader.vue';
+import StatusBadge from '../../components/StatusBadge.vue';
+import { authState, getApiErrorMessage, getAuthHeaders } from '../../auth/auth';
 import api from '../../lib/api';
 
 type ApprovalStatus = 'MENUNGGU' | 'DISETUJUI' | 'DITOLAK';
@@ -30,23 +35,36 @@ const page = ref(1);
 const status = ref('');
 const loading = ref(false);
 const errorMessage = ref('');
+const departmentLabel = computed(() => {
+  if (authState.user?.department.name === 'Information Technology') return 'IT';
+  return authState.user?.department.name ?? 'Tim';
+});
 
 function approvalStatusLabel(value: ApprovalStatus) {
-  return { MENUNGGU: 'Menunggu', DISETUJUI: 'Disetujui', DITOLAK: 'Ditolak' }[value];
+  return { MENUNGGU: 'Perlu ditinjau', DISETUJUI: 'Disetujui', DITOLAK: 'Ditolak' }[value];
 }
 
-function statusClass(value: ApprovalStatus) {
-  if (value === 'MENUNGGU') return 'status-warning';
-  if (value === 'DISETUJUI') return 'status-success';
-  return 'status-danger';
+function statusTone(value: ApprovalStatus) {
+  if (value === 'MENUNGGU') return 'warning' as const;
+  if (value === 'DISETUJUI') return 'success' as const;
+  return 'danger' as const;
 }
 
 function requestLabel(item: ApprovalItem) {
   if (item.request.leaveRequest) {
     return item.request.leaveRequest.leaveType === 'TAHUNAN' ? 'Cuti Tahunan' : 'Cuti Khusus';
   }
-  if (item.request.reimbursementRequest) return 'Penggantian Biaya';
+  if (item.request.reimbursementRequest) return 'Reimbursement';
   return item.request.permissionRequest?.permissionType === 'HARIAN' ? 'Izin Harian' : 'Izin Per Jam';
+}
+
+function requestDetailPath(item: ApprovalItem) {
+  const path = item.request.type === 'CUTI'
+    ? `/pengajuan/cuti/${item.request.id}`
+    : item.request.type === 'IZIN'
+      ? `/pengajuan/izin/${item.request.id}`
+      : `/pengajuan/reimbursement/${item.request.id}`;
+  return { path, query: { from: 'persetujuan' } };
 }
 
 function formatDate(value: string) {
@@ -92,30 +110,22 @@ onMounted(loadApprovals);
   <div class="min-h-screen bg-background md:grid md:grid-cols-[auto_minmax(0,1fr)]">
     <AppSidebar />
     <main class="min-w-0 px-5 py-7 sm:px-7 md:px-8 md:py-9 lg:px-10">
-      <header class="border-b border-border pb-6">
-        <p class="text-sm font-medium text-primary-soft">Pengajuan Karyawan</p>
-        <h1 class="mt-1 text-2xl font-semibold text-primary">Persetujuan</h1>
-        <p class="mt-2 text-sm text-text-muted">Tinjau pengajuan yang menjadi tanggung jawab Anda.</p>
-      </header>
+      <PortalPageHeader
+        :eyebrow="`Kelola ${departmentLabel}`"
+        title="Cuti dan Izin Tim"
+        description="Tinjau cuti dan izin anggota tim yang menjadi tanggung jawab Anda."
+      />
 
-      <section class="data-card">
-        <div class="data-card-heading">
-          <div>
-            <h2 class="text-base font-semibold text-primary">Daftar Persetujuan</h2>
-            <p class="mt-1 text-sm text-text-muted">Gunakan filter untuk menemukan pengajuan yang perlu ditinjau.</p>
-          </div>
-          <span class="data-count">{{ meta.total }} persetujuan</span>
-        </div>
-
-        <div class="mt-5 max-w-xs">
+      <DataListCard title="Daftar Cuti dan Izin Tim Anda" description="Lihat pengajuan yang perlu Anda tinjau maupun yang sudah diproses." :count="meta.total" count-label="pengajuan">
+        <template #filters><div class="max-w-xs">
           <label class="form-label" for="approval-status">Status</label>
           <select id="approval-status" v-model="status" class="form-input">
             <option value="">Semua status</option>
-            <option value="MENUNGGU">Menunggu</option>
-            <option value="DISETUJUI">Disetujui</option>
-            <option value="DITOLAK">Ditolak</option>
+            <option value="MENUNGGU">Perlu ditinjau</option>
+            <option value="DISETUJUI">Sudah disetujui</option>
+            <option value="DITOLAK">Sudah ditolak</option>
           </select>
-        </div>
+        </div></template>
 
         <div v-if="errorMessage" class="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-danger" role="alert">{{ errorMessage }}</div>
 
@@ -125,27 +135,24 @@ onMounted(loadApprovals);
               <tr><th class="px-4 py-3">Pengajuan</th><th class="px-4 py-3">Pemohon</th><th class="px-4 py-3">Departemen</th><th class="px-4 py-3">Tanggal</th><th class="px-4 py-3">Status</th><th class="px-4 py-3 text-right">Aksi</th></tr>
             </thead>
             <tbody>
-              <tr v-if="loading" class="data-state-row"><td colspan="6" class="py-10 text-center text-text-muted">Memuat persetujuan...</td></tr>
-              <tr v-else-if="approvals.length === 0" class="data-state-row"><td colspan="6" class="py-10 text-center"><p class="font-medium text-primary">Belum ada persetujuan.</p><p class="mt-1 text-sm text-text-muted">Tidak ada pengajuan yang cocok dengan filter saat ini.</p></td></tr>
+              <ListState v-if="loading" :colspan="6" loading loading-text="Memuat pengajuan tim..." />
+              <ListState v-else-if="approvals.length === 0" :colspan="6" icon="document" title="Tidak ada pengajuan tim" description="Belum ada cuti atau izin yang cocok dengan filter saat ini." />
               <template v-else>
                 <tr v-for="item in approvals" :key="item.id">
                   <td class="px-4 py-4"><p class="font-medium text-primary">{{ requestLabel(item) }}</p><p class="mt-1 text-xs text-text-muted">REQ-{{ item.request.id }}</p></td>
                   <td class="px-4 py-4 text-text">{{ item.request.requester.name }}</td>
                   <td class="px-4 py-4 text-text-muted">{{ item.request.requester.department.name }}</td>
                   <td class="px-4 py-4 text-text-muted">{{ formatDate(item.request.createdAt) }}</td>
-                  <td class="px-4 py-4"><span :class="statusClass(item.status)">{{ approvalStatusLabel(item.status) }}</span></td>
-                  <td class="px-4 py-4 text-right"><RouterLink class="table-action-link" :to="`/persetujuan/${item.id}`">Lihat detail</RouterLink></td>
+                  <td class="px-4 py-4"><StatusBadge :label="approvalStatusLabel(item.status)" :tone="statusTone(item.status)" /></td>
+                  <td class="px-4 py-4 text-right"><RouterLink class="table-action-link" :to="requestDetailPath(item)">Lihat detail</RouterLink></td>
                 </tr>
               </template>
             </tbody>
           </table>
         </div>
 
-        <div class="data-pagination">
-          <p>Halaman {{ meta.page }} dari {{ meta.totalPages }}</p>
-          <div class="flex items-center gap-3"><button class="secondary-button min-h-9 px-3 py-2" type="button" :disabled="page <= 1 || loading" @click="changePage(page - 1)">Sebelumnya</button><button class="secondary-button min-h-9 px-3 py-2" type="button" :disabled="page >= meta.totalPages || loading" @click="changePage(page + 1)">Berikutnya</button></div>
-        </div>
-      </section>
+        <template #pagination><DataPagination :page="meta.page" :total-pages="meta.totalPages" :loading="loading" @change="changePage" /></template>
+      </DataListCard>
     </main>
   </div>
 </template>
