@@ -6,6 +6,7 @@ import DataListCard from '../../components/DataListCard.vue';
 import DataPagination from '../../components/DataPagination.vue';
 import ListState from '../../components/ListState.vue';
 import PortalPageHeader from '../../components/PortalPageHeader.vue';
+import ReportExportDialog from '../../components/ReportExportDialog.vue';
 import ListScopeFilter from '../../components/ListScopeFilter.vue';
 import StatusBadge from '../../components/StatusBadge.vue';
 import { getApiErrorMessage, getAuthHeaders } from '../../auth/auth';
@@ -155,7 +156,17 @@ onMounted(loadRequests);
         eyebrow="Kelola HR"
         title="Cuti dan Izin Karyawan"
         description="Tinjau pengajuan yang menjadi tanggung jawab Anda dan pantau seluruh cuti serta izin karyawan."
-      />
+      >
+        <template #actions>
+          <ReportExportDialog
+            endpoint="/reports/hr/leave-permission"
+            title="Export Cuti dan Izin Karyawan"
+            description="Cuti dan izin yang periodenya beririsan dengan bulan pilihan akan dimasukkan ke laporan."
+            filename-prefix="laporan-cuti-izin"
+            processed-only
+          />
+        </template>
+      </PortalPageHeader>
 
       <DataListCard
         :title="isInbox ? 'Cuti dan Izin yang Perlu Anda Tinjau' : 'Semua Pengajuan Cuti dan Izin Karyawan'"

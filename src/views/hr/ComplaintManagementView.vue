@@ -5,6 +5,7 @@ import DataListCard from '../../components/DataListCard.vue';
 import DataPagination from '../../components/DataPagination.vue';
 import ListState from '../../components/ListState.vue';
 import PortalPageHeader from '../../components/PortalPageHeader.vue';
+import ReportExportDialog from '../../components/ReportExportDialog.vue';
 import StatusBadge from '../../components/StatusBadge.vue';
 import { getApiErrorMessage, getAuthHeaders } from '../../auth/auth';
 import api from '../../lib/api';
@@ -50,7 +51,16 @@ onMounted(loadComplaints);
   <div class="min-h-screen bg-background md:grid md:grid-cols-[auto_minmax(0,1fr)]">
     <AppSidebar />
     <main class="min-w-0 px-5 py-7 sm:px-7 md:px-8 md:py-9 lg:px-10">
-      <PortalPageHeader eyebrow="Kelola HR" title="Keluhan Karyawan" description="Pantau dan tindak lanjuti keluhan yang disampaikan karyawan." />
+      <PortalPageHeader eyebrow="Kelola HR" title="Keluhan Karyawan" description="Pantau dan tindak lanjuti keluhan yang disampaikan karyawan.">
+        <template #actions>
+          <ReportExportDialog
+            endpoint="/reports/hr/complaints"
+            title="Export Keluhan Karyawan"
+            description="Keluhan yang disampaikan pada bulan pilihan akan dimasukkan ke laporan."
+            filename-prefix="laporan-keluhan"
+          />
+        </template>
+      </PortalPageHeader>
       <DataListCard title="Semua Keluhan Karyawan" description="Cari keluhan dan prioritaskan yang masih membutuhkan penanganan Anda." :count="meta.total" count-label="keluhan">
         <template #filters><div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <label><span class="form-label">Cari subjek</span><input v-model="search" class="form-input" type="search" placeholder="Cari subjek keluhan" /></label>

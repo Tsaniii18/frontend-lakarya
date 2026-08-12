@@ -6,6 +6,7 @@ import DataListCard from '../../components/DataListCard.vue';
 import DataPagination from '../../components/DataPagination.vue';
 import ListState from '../../components/ListState.vue';
 import PortalPageHeader from '../../components/PortalPageHeader.vue';
+import ReportExportDialog from '../../components/ReportExportDialog.vue';
 import ListScopeFilter from '../../components/ListScopeFilter.vue';
 import StatusBadge from '../../components/StatusBadge.vue';
 import { getApiErrorMessage, getAuthHeaders } from '../../auth/auth';
@@ -73,7 +74,17 @@ onMounted(loadRequests);
   <div class="min-h-screen bg-background md:grid md:grid-cols-[auto_minmax(0,1fr)]">
     <AppSidebar />
     <main class="min-w-0 px-5 py-7 sm:px-7 md:px-8 md:py-9 lg:px-10">
-      <PortalPageHeader eyebrow="Kelola Keuangan" title="Reimbursement Karyawan" description="Tinjau reimbursement yang menjadi tanggung jawab Anda dan pantau seluruh riwayat penggantian biaya karyawan." />
+      <PortalPageHeader eyebrow="Kelola Keuangan" title="Reimbursement Karyawan" description="Tinjau reimbursement yang menjadi tanggung jawab Anda dan pantau seluruh riwayat penggantian biaya karyawan.">
+        <template #actions>
+          <ReportExportDialog
+            endpoint="/reports/finance/reimbursements"
+            title="Export Pengeluaran Reimbursement"
+            description="Reimbursement dengan tanggal pengeluaran pada bulan pilihan akan dimasukkan ke laporan."
+            filename-prefix="laporan-reimbursement"
+            processed-only
+          />
+        </template>
+      </PortalPageHeader>
       <DataListCard :title="isInbox ? 'Reimbursement yang Perlu Anda Tinjau' : 'Semua Reimbursement Karyawan'" :description="isInbox ? 'Menampilkan reimbursement yang sudah siap Anda proses.' : 'Gunakan filter untuk menemukan reimbursement karyawan tertentu.'" :count="meta.total" count-label="reimbursement">
         <template #filters>
           <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
