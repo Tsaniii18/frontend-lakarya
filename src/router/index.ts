@@ -15,11 +15,8 @@ import PermissionDetailView from '../views/requests/PermissionDetailView.vue';
 import ReimbursementFormView from '../views/requests/ReimbursementFormView.vue';
 import ReimbursementDetailView from '../views/requests/ReimbursementDetailView.vue';
 import ApprovalInboxView from '../views/approvals/ApprovalInboxView.vue';
-import ApprovalDetailView from '../views/approvals/ApprovalDetailView.vue';
 import RequestManagementView from '../views/hr/RequestManagementView.vue';
-import ManagedRequestDetailView from '../views/hr/ManagedRequestDetailView.vue';
 import ReimbursementManagementView from '../views/finance/ReimbursementManagementView.vue';
-import ManagedReimbursementDetailView from '../views/finance/ManagedReimbursementDetailView.vue';
 import ComplaintListView from '../views/complaints/ComplaintListView.vue';
 import ComplaintFormView from '../views/complaints/ComplaintFormView.vue';
 import ComplaintDetailView from '../views/complaints/ComplaintDetailView.vue';
@@ -29,7 +26,7 @@ import NotFoundView from '../views/NotFoundView.vue';
 import { authState } from '../auth/auth';
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
@@ -116,9 +113,7 @@ const router = createRouter({
     },
     {
       path: '/persetujuan/:id',
-      name: 'approval-detail',
-      component: ApprovalDetailView,
-      meta: { requiresAuth: true, requiresManager: true },
+      redirect: { name: 'approvals' },
     },
     {
       path: '/kelola-pengguna',
@@ -134,9 +129,7 @@ const router = createRouter({
     },
     {
       path: '/kelola-pengajuan/:id',
-      name: 'managed-request-detail',
-      component: ManagedRequestDetailView,
-      meta: { requiresAuth: true, requiresHr: true },
+      redirect: { name: 'request-management' },
     },
     {
       path: '/kelola-reimbursement',
@@ -146,9 +139,7 @@ const router = createRouter({
     },
     {
       path: '/kelola-reimbursement/:id',
-      name: 'managed-reimbursement-detail',
-      component: ManagedReimbursementDetailView,
-      meta: { requiresAuth: true, requiresFinance: true },
+      redirect: { name: 'reimbursement-management' },
     },
     {
       path: '/keluhan',
@@ -195,11 +186,33 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 });
 
+const protectedAreaRoots = [
+  '/beranda',
+  '/pengajuan',
+  '/persetujuan',
+  '/kelola-pengguna',
+  '/kelola-pengajuan',
+  '/kelola-reimbursement',
+  '/keluhan',
+  '/kelola-keluhan',
+  '/profil',
+];
+
+function isProtectedArea(path: string) {
+  return protectedAreaRoots.some(
+    (root) => path === root || path.startsWith(`${root}/`),
+  );
+}
+
 router.beforeEach((to) => {
-  if (to.meta.requiresAuth && !authState.token) {
+  const requiresAuthentication =
+    to.meta.requiresAuth ||
+    (to.name === 'not-found' && isProtectedArea(to.path));
+
+  if (requiresAuthentication && !authState.token) {
     return {
       name: 'login',
-      query: { redirect: to.fullPath },
+      query: { redirect: to.fullPath, reason: 'auth-required' },
     };
   }
 

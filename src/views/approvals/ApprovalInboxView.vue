@@ -49,6 +49,15 @@ function requestLabel(item: ApprovalItem) {
   return item.request.permissionRequest?.permissionType === 'HARIAN' ? 'Izin Harian' : 'Izin Per Jam';
 }
 
+function requestDetailPath(item: ApprovalItem) {
+  const path = item.request.type === 'CUTI'
+    ? `/pengajuan/cuti/${item.request.id}`
+    : item.request.type === 'IZIN'
+      ? `/pengajuan/izin/${item.request.id}`
+      : `/pengajuan/reimbursement/${item.request.id}`;
+  return { path, query: { from: 'persetujuan' } };
+}
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('id-ID', {
     day: 'numeric',
@@ -134,7 +143,7 @@ onMounted(loadApprovals);
                   <td class="px-4 py-4 text-text-muted">{{ item.request.requester.department.name }}</td>
                   <td class="px-4 py-4 text-text-muted">{{ formatDate(item.request.createdAt) }}</td>
                   <td class="px-4 py-4"><span :class="statusClass(item.status)">{{ approvalStatusLabel(item.status) }}</span></td>
-                  <td class="px-4 py-4 text-right"><RouterLink class="table-action-link" :to="`/persetujuan/${item.id}`">Lihat detail</RouterLink></td>
+                  <td class="px-4 py-4 text-right"><RouterLink class="table-action-link" :to="requestDetailPath(item)">Lihat detail</RouterLink></td>
                 </tr>
               </template>
             </tbody>

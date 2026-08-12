@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import AppSidebar from '../../components/AppSidebar.vue';
 import ConfirmationModal from '../../components/ConfirmationModal.vue';
-import { getApiErrorMessage, getAuthHeaders } from '../../auth/auth';
+import RequestReviewSection from '../../components/RequestReviewSection.vue';
+import { authState, getApiErrorMessage, getAuthHeaders } from '../../auth/auth';
 import api from '../../lib/api';
 
 type RequestStatus = 'MENUNGGU' | 'DISETUJUI' | 'DITOLAK' | 'DIBATALKAN';
@@ -14,6 +15,12 @@ interface LeaveRequestDetail {
   createdAt: string;
   completedAt: string | null;
   totalDays: number;
+  requester: {
+    id: number;
+    name: string;
+    employeeNumber: string;
+    department: { name: string };
+  };
   leaveRequest: {
     leaveType: 'TAHUNAN' | 'KHUSUS';
     startDate: string;
@@ -33,7 +40,7 @@ interface LeaveRequestDetail {
     status: 'MENUNGGU' | 'DISETUJUI' | 'DITOLAK';
     reviewNote: string | null;
     reviewedAt: string | null;
-    approver: { department: { name: string } };
+    approver: { id: number; department: { name: string } };
   }>;
 }
 
@@ -44,6 +51,21 @@ const canceling = ref(false);
 const confirmOpen = ref(false);
 const errorMessage = ref('');
 const successMessage = ref('');
+const isOwner = computed(
+  () => request.value?.requester.id === authState.user?.id,
+);
+const detailSource = computed(() => route.query.from);
+const backTarget = computed(() => {
+  if (detailSource.value === 'kelola-pengajuan') return '/kelola-pengajuan';
+  if (detailSource.value === 'persetujuan') return '/persetujuan';
+  return !request.value || isOwner.value ? '/pengajuan' : '/persetujuan';
+});
+const backLabel = computed(() => {
+  if (detailSource.value === 'kelola-pengajuan') return 'Kembali ke Kelola Pengajuan';
+  return (!request.value || isOwner.value) && detailSource.value !== 'persetujuan'
+    ? 'Kembali ke Pengajuan'
+    : 'Kembali ke Persetujuan';
+});
 
 function statusLabel(value: RequestStatus) {
   return {
@@ -132,12 +154,12 @@ async function cancelRequest() {
   errorMessage.value = '';
 
   try {
-    const { data } = await api.patch<{ request: LeaveRequestDetail }>(
+    await api.patch(
       `/leave/${request.value.id}/cancel`,
       {},
       { headers: getAuthHeaders() },
     );
-    request.value = data.request;
+    await loadDetail();
     successMessage.value = 'Pengajuan cuti berhasil dibatalkan.';
     confirmOpen.value = false;
   } catch (error) {
@@ -145,6 +167,11 @@ async function cancelRequest() {
   } finally {
     canceling.value = false;
   }
+}
+
+async function handleApprovalProcessed(message: string) {
+  successMessage.value = message;
+  await loadDetail();
 }
 
 onMounted(loadDetail);
@@ -156,7 +183,7 @@ onMounted(loadDetail);
 
     <main class="min-w-0 px-5 py-7 sm:px-7 md:px-8 md:py-9 lg:px-10">
       <header class="border-b border-border pb-6">
-        <RouterLink class="text-sm font-semibold text-primary-soft hover:text-primary" to="/pengajuan">← Kembali ke Pengajuan</RouterLink>
+        <RouterLink class="text-sm font-semibold text-primary-soft hover:text-primary" :to="backTarget">← {{ backLabel }}</RouterLink>
         <div class="mt-4 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 class="text-2xl font-semibold text-primary">Detail Pengajuan</h1>
@@ -173,7 +200,8 @@ onMounted(loadDetail);
       <p v-if="loading" class="mt-7 text-sm text-text-muted">Memuat detail pengajuan...</p>
 
       <div v-else-if="request" class="mt-7 grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <section class="rounded-2xl border border-border bg-surface p-5 sm:p-6">
+        <div class="space-y-5">
+          <section class="rounded-2xl border border-border bg-surface p-5 sm:p-6">
           <div class="flex items-center gap-3 border-b border-border pb-5">
             <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#e9f0f7] text-primary-soft">
               <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -186,6 +214,12 @@ onMounted(loadDetail);
               <p class="mt-1 text-sm text-text-muted">Rincian periode dan alasan pengajuan.</p>
             </div>
           </div>
+
+          <dl v-if="!isOwner" class="mt-5 grid overflow-hidden rounded-xl border border-border bg-surface-soft sm:grid-cols-3">
+            <div class="p-4 sm:border-r sm:border-border"><dt class="text-xs uppercase tracking-wide text-text-muted">Pemohon</dt><dd class="mt-2 text-sm font-semibold text-primary">{{ request.requester.name }}</dd><dd class="mt-1 text-xs text-text-muted">{{ request.requester.employeeNumber }}</dd></div>
+            <div class="border-t border-border p-4 sm:border-r sm:border-t-0"><dt class="text-xs uppercase tracking-wide text-text-muted">Departemen</dt><dd class="mt-2 text-sm font-semibold text-primary">{{ request.requester.department.name }}</dd></div>
+            <div class="border-t border-border p-4 sm:border-t-0"><dt class="text-xs uppercase tracking-wide text-text-muted">Diajukan</dt><dd class="mt-2 text-sm font-semibold text-primary">{{ formatDate(request.createdAt) }}</dd></div>
+          </dl>
 
           <dl class="mt-5 grid overflow-hidden rounded-xl border border-border bg-surface-soft sm:grid-cols-3">
             <div class="p-4 sm:border-r sm:border-border">
@@ -229,7 +263,14 @@ onMounted(loadDetail);
               </li>
             </ol>
           </div>
-        </section>
+          </section>
+
+          <RequestReviewSection
+            :request-status="request.status"
+            :approvals="request.approvals"
+            @processed="handleApprovalProcessed"
+          />
+        </div>
 
         <aside class="h-fit rounded-2xl border border-border bg-surface p-5 sm:p-6">
           <h2 class="text-base font-semibold text-primary">Ringkasan</h2>
@@ -252,7 +293,7 @@ onMounted(loadDetail);
             </div>
           </dl>
 
-          <div v-if="request.status === 'MENUNGGU'" class="mt-6 border-t border-border pt-5">
+          <div v-if="isOwner && request.status === 'MENUNGGU'" class="mt-6 border-t border-border pt-5">
             <button class="w-full rounded-lg border border-danger px-3 py-2 text-xs font-semibold text-danger hover:bg-red-50" type="button" @click="confirmOpen = true">Batalkan Pengajuan</button>
           </div>
         </aside>

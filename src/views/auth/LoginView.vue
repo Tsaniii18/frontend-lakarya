@@ -10,6 +10,13 @@ const email = ref('');
 const password = ref('');
 const loading = ref(false);
 const errorMessage = ref('');
+const accessMessage = ref(
+  route.query.reason === 'session-expired'
+    ? 'Sesi Anda telah berakhir. Silakan masuk kembali.'
+    : route.query.reason === 'auth-required'
+      ? 'Anda belum masuk. Silakan masuk terlebih dahulu untuk mengakses halaman tersebut.'
+      : '',
+);
 const successMessage = ref(
   route.query.passwordChanged === '1'
     ? 'Password berhasil diubah. Silakan masuk kembali.'
@@ -53,6 +60,10 @@ async function handleSubmit() {
           </p>
         </div>
 
+        <div v-if="accessMessage" class="mt-5 flex items-start justify-between gap-4 rounded-lg bg-[#e9f0f7] px-4 py-3 text-sm text-primary-soft" role="status">
+          <p>{{ accessMessage }}</p>
+          <button class="shrink-0 text-lg leading-none" type="button" aria-label="Tutup pemberitahuan" @click="accessMessage = ''">×</button>
+        </div>
         <div v-if="errorMessage" class="mt-5 rounded-lg bg-[#f7e8e7] px-4 py-3 text-sm text-danger">
           {{ errorMessage }}
         </div>

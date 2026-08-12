@@ -44,6 +44,13 @@ function requestLabel(item: RequestItem) {
   return item.permissionRequest?.permissionType === 'HARIAN' ? 'Izin Harian' : 'Izin Per Jam';
 }
 
+function requestDetailPath(item: RequestItem) {
+  const path = item.type === 'CUTI'
+    ? `/pengajuan/cuti/${item.id}`
+    : `/pengajuan/izin/${item.id}`;
+  return { path, query: { from: 'kelola-pengajuan' } };
+}
+
 function statusLabel(value: RequestStatus) {
   return { MENUNGGU: 'Menunggu', DISETUJUI: 'Disetujui', DITOLAK: 'Ditolak', DIBATALKAN: 'Dibatalkan' }[value];
 }
@@ -125,7 +132,7 @@ onMounted(loadRequests);
             <tbody>
               <tr v-if="loading" class="data-state-row"><td colspan="6" class="py-10 text-center text-text-muted">Memuat pengajuan...</td></tr>
               <tr v-else-if="requests.length === 0" class="data-state-row"><td colspan="6" class="py-10 text-center"><p class="font-medium text-primary">Pengajuan tidak ditemukan.</p><p class="mt-1 text-sm text-text-muted">Coba ubah kombinasi filter yang digunakan.</p></td></tr>
-              <template v-else><tr v-for="item in requests" :key="item.id"><td><p class="font-medium text-primary">{{ requestLabel(item) }}</p><p class="mt-1 text-xs text-text-muted">REQ-{{ item.id }}</p></td><td class="text-text">{{ item.requester.name }}</td><td class="text-text-muted">{{ item.requester.department.name }}</td><td class="text-text-muted">{{ formatDate(item.createdAt) }}</td><td><span :class="statusClass(item.status)">{{ statusLabel(item.status) }}</span></td><td class="text-right"><RouterLink class="table-action-link" :to="`/kelola-pengajuan/${item.id}`">Lihat detail</RouterLink></td></tr></template>
+              <template v-else><tr v-for="item in requests" :key="item.id"><td><p class="font-medium text-primary">{{ requestLabel(item) }}</p><p class="mt-1 text-xs text-text-muted">REQ-{{ item.id }}</p></td><td class="text-text">{{ item.requester.name }}</td><td class="text-text-muted">{{ item.requester.department.name }}</td><td class="text-text-muted">{{ formatDate(item.createdAt) }}</td><td><span :class="statusClass(item.status)">{{ statusLabel(item.status) }}</span></td><td class="text-right"><RouterLink class="table-action-link" :to="requestDetailPath(item)">Lihat detail</RouterLink></td></tr></template>
             </tbody>
           </table>
         </div>
