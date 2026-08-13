@@ -9,6 +9,7 @@ export interface AuthUser {
   email: string;
   accountStatus: string;
   profilePictureUrl: string | null;
+  isDemo: boolean;
   department: {
     id: number;
     name: string;
@@ -19,6 +20,25 @@ export interface AuthUser {
 interface LoginResponse {
   accessToken: string;
   user: AuthUser;
+}
+
+export type DemoPersona =
+  | 'HR_MANAGER'
+  | 'FINANCE_MANAGER'
+  | 'IT_MANAGER'
+  | 'MARKETING_MANAGER'
+  | 'IT_STAFF';
+
+export interface DemoPersonaOption {
+  persona: DemoPersona;
+  label: string;
+  role: AuthUser['role'];
+  department: string;
+}
+
+interface DemoAccessResponse {
+  enabled: boolean;
+  personas: DemoPersonaOption[];
 }
 
 function readStoredUser() {
@@ -45,11 +65,22 @@ export async function login(email: string, password: string) {
     password,
   });
 
-  authState.token = data.accessToken;
-  authState.user = data.user;
-  localStorage.setItem('lakarya_token', data.accessToken);
-  localStorage.setItem('lakarya_user', JSON.stringify(data.user));
+  storeLogin(data);
 
+  return data;
+}
+
+export async function getDemoAccess() {
+  const { data } = await api.get<DemoAccessResponse>('/auth/demo');
+  return data;
+}
+
+export async function loginAsDemo(persona: DemoPersona) {
+  const { data } = await api.post<LoginResponse>('/auth/demo-login', {
+    persona,
+  });
+
+  storeLogin(data);
   return data;
 }
 
@@ -85,6 +116,13 @@ export function getAuthHeaders() {
 export function setAuthUser(user: AuthUser) {
   authState.user = user;
   localStorage.setItem('lakarya_user', JSON.stringify(user));
+}
+
+function storeLogin(data: LoginResponse) {
+  authState.token = data.accessToken;
+  authState.user = data.user;
+  localStorage.setItem('lakarya_token', data.accessToken);
+  localStorage.setItem('lakarya_user', JSON.stringify(data.user));
 }
 
 export async function getProfilePictureBlob() {

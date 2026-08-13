@@ -342,7 +342,20 @@ watch(
       </RouterLink>
     </nav>
 
-    <div class="mt-auto border-t border-white/15 pt-5">
+    <div class="mt-auto rounded-xl border border-white/15 bg-white/[0.07] p-3" :class="{ 'md:hidden': collapsed }">
+      <div class="flex items-start gap-2.5">
+        <svg class="mt-0.5 h-4 w-4 shrink-0 text-brand-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 10v6M12 7h.01" />
+        </svg>
+        <div>
+          <p class="text-xs font-semibold text-white">Proyek demo</p>
+          <p class="mt-1 text-[11px] leading-[1.55] text-brand-light">Data di sini berasal dari eksplorasi banyak pengunjung. Mohon maklum jika ada isi yang kurang sesuai; saya akan berusaha membersihkannya secara berkala.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 border-t border-white/15 pt-5">
       <div :class="{ 'md:hidden': collapsed }">
         <p class="truncate text-sm font-medium">{{ authState.user?.name }}</p>
         <p class="mt-1 truncate text-xs text-brand-light">

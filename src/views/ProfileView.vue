@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AppSidebar from '../components/AppSidebar.vue';
 import ConfirmationModal from '../components/ConfirmationModal.vue';
@@ -8,6 +8,7 @@ import {
   getApiErrorMessage,
   getAuthHeaders,
   getProfilePictureBlob,
+  logout,
   setAuthUser,
 } from '../auth/auth';
 import type { AuthUser } from '../auth/auth';
@@ -46,6 +47,8 @@ const profilePictureObjectUrl = ref('');
 const editPictureModalOpen = ref(false);
 const deletePictureModalOpen = ref(false);
 const pictureDeleting = ref(false);
+const registrationRedirecting = ref(false);
+const isDemoAccount = computed(() => profile.value?.isDemo === true);
 
 function roleLabel(role: AuthUser['role']) {
   return role === 'MANAJER' ? 'Manajer' : 'Staf';
@@ -93,10 +96,9 @@ async function saveProfile() {
   try {
     const { data } = await api.patch<UpdateProfileResponse>(
       '/users/profile',
-      {
-        name: name.value,
-        email: email.value,
-      },
+      isDemoAccount.value
+        ? { name: name.value }
+        : { name: name.value, email: email.value },
       { headers: getAuthHeaders() },
     );
     profile.value = data.user;
@@ -140,6 +142,18 @@ async function changePassword() {
     passwordError.value = getApiErrorMessage(error);
   } finally {
     passwordSaving.value = false;
+  }
+}
+
+async function goToRegistration() {
+  if (registrationRedirecting.value) return;
+
+  registrationRedirecting.value = true;
+  try {
+    await logout();
+    await router.push('/daftar');
+  } finally {
+    registrationRedirecting.value = false;
   }
 }
 
@@ -309,7 +323,7 @@ onBeforeUnmount(() => {
           <section class="rounded-2xl border border-border bg-surface p-5 sm:p-6">
             <div>
               <h2 class="text-lg font-semibold text-primary">Foto Profil</h2>
-              <p class="mt-1 text-sm text-text-muted">Foto akan digunakan sebagai identitas akun Anda.</p>
+              <p class="mt-1 text-sm text-text-muted">{{ isDemoAccount ? 'Foto akun demo dikunci agar tampilan bersama tetap terjaga.' : 'Foto akan digunakan sebagai identitas akun Anda.' }}</p>
             </div>
 
             <div v-if="profile" class="mt-6 flex flex-col gap-5 sm:flex-row sm:items-center">
@@ -323,7 +337,7 @@ onBeforeUnmount(() => {
                 <img class="h-full w-full object-cover" :src="profilePictureObjectUrl" :alt="`Foto profil ${profile.name}`" />
               </button>
               <button
-                v-else
+                v-else-if="!isDemoAccount"
                 class="inline-flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-primary text-3xl font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-soft focus-visible:ring-offset-2"
                 type="button"
                 aria-label="Pilih foto profil"
@@ -331,19 +345,23 @@ onBeforeUnmount(() => {
               >
                 {{ profile.name.charAt(0).toUpperCase() }}
               </button>
+              <span v-else class="inline-flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-primary text-3xl font-semibold text-white">
+                {{ profile.name.charAt(0).toUpperCase() }}
+              </span>
 
               <div>
                 <input
+                  v-if="!isDemoAccount"
                   ref="fileInput"
                   class="hidden"
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   @change="handlePictureSelection"
                 />
-                <button class="secondary-button" type="button" @click="openEditPicture">
+                <button v-if="!isDemoAccount" class="secondary-button" type="button" @click="openEditPicture">
                   Edit Foto
                 </button>
-                <p class="mt-3 text-xs leading-5 text-text-muted">JPEG, PNG, atau WebP. Maksimal 2 MB.</p>
+                <p class="text-xs leading-5 text-text-muted" :class="{ 'mt-3': !isDemoAccount }">{{ isDemoAccount ? 'Gunakan akun pribadi untuk mencoba mengganti foto profil.' : 'JPEG, PNG, atau WebP. Maksimal 2 MB.' }}</p>
               </div>
             </div>
           </section>
@@ -351,7 +369,9 @@ onBeforeUnmount(() => {
           <section class="rounded-2xl border border-border bg-surface p-5 sm:p-6">
             <div>
               <h2 class="text-lg font-semibold text-primary">Informasi Profil</h2>
-              <p class="mt-1 text-sm text-text-muted">Nama dan email dapat diperbarui.</p>
+              <p class="mt-1 text-sm text-text-muted">
+                {{ isDemoAccount ? 'Nama dan email akun demo dikunci untuk menjaga akses bersama.' : 'Nama dan email dapat diperbarui.' }}
+              </p>
             </div>
 
             <form v-if="profile" class="mt-6 grid gap-5 sm:grid-cols-2" @submit.prevent="saveProfile">
@@ -365,11 +385,12 @@ onBeforeUnmount(() => {
               </div>
               <div class="sm:col-span-2">
                 <label class="form-label" for="profile-name">Nama Lengkap</label>
-                <input id="profile-name" v-model="name" class="form-input" type="text" autocomplete="name" required />
+                <input id="profile-name" v-model="name" class="form-input" :class="{ 'bg-surface-soft': isDemoAccount }" type="text" autocomplete="name" required :readonly="isDemoAccount" />
               </div>
               <div class="sm:col-span-2">
                 <label class="form-label" for="profile-email">Email</label>
-                <input id="profile-email" v-model="email" class="form-input" type="email" autocomplete="email" required />
+                <input id="profile-email" v-model="email" class="form-input" :class="{ 'bg-surface-soft': isDemoAccount }" type="email" autocomplete="email" required :readonly="isDemoAccount" />
+                <p v-if="isDemoAccount" class="mt-2 text-xs leading-5 text-text-muted">Identitas akun dikunci agar tetap konsisten untuk setiap pengunjung.</p>
               </div>
               <div>
                 <label class="form-label" for="role">Peran</label>
@@ -379,7 +400,7 @@ onBeforeUnmount(() => {
                 <label class="form-label" for="account-status">Status Akun</label>
                 <input id="account-status" class="form-input bg-surface-soft" type="text" :value="statusLabel(profile.accountStatus)" readonly />
               </div>
-              <div class="sm:col-span-2 flex justify-end">
+              <div v-if="!isDemoAccount" class="sm:col-span-2 flex justify-end">
                 <button class="primary-button" type="submit" :disabled="profileSaving">
                   {{ profileSaving ? 'Menyimpan...' : 'Simpan Perubahan' }}
                 </button>
@@ -388,7 +409,7 @@ onBeforeUnmount(() => {
           </section>
         </div>
 
-        <section class="rounded-2xl border border-border bg-surface p-5 sm:p-6">
+        <section v-if="!isDemoAccount" class="rounded-2xl border border-border bg-surface p-5 sm:p-6">
           <div>
             <h2 class="text-lg font-semibold text-primary">Ganti Password</h2>
             <p class="mt-1 text-sm leading-6 text-text-muted">Setelah password berhasil diganti, Anda harus masuk kembali.</p>
@@ -416,6 +437,27 @@ onBeforeUnmount(() => {
               {{ passwordSaving ? 'Menyimpan...' : 'Ganti Password' }}
             </button>
           </form>
+        </section>
+
+        <section v-else class="rounded-2xl border border-[#cad8e8] bg-[#f4f7fb] p-5 sm:p-6">
+          <div class="flex items-start gap-3">
+            <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white" aria-hidden="true">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="5" y="10" width="14" height="10" rx="2" />
+                <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+              </svg>
+            </span>
+            <div>
+              <h2 class="text-lg font-semibold text-primary">Akun Demo Bersama</h2>
+              <p class="mt-2 text-sm leading-6 text-text-muted">Profil, foto, email, dan password akun ini dikunci agar akses demo tetap tersedia dan konsisten untuk semua pengunjung.</p>
+              <p class="mt-3 text-sm leading-6 text-text-muted">
+                Untuk mencoba pengaturan profil secara penuh, silakan
+                <button class="font-semibold text-primary-soft hover:text-primary hover:underline disabled:cursor-wait disabled:opacity-70" type="button" :disabled="registrationRedirecting" @click="goToRegistration">
+                  {{ registrationRedirecting ? 'membuka registrasi...' : 'daftarkan akun pribadi' }}
+                </button>.
+              </p>
+            </div>
+          </div>
         </section>
       </div>
     </main>
