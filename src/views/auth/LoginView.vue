@@ -1,14 +1,24 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppLogo from '../../components/AppLogo.vue';
-import { getApiErrorMessage, login } from '../../auth/auth';
+import {
+  getApiErrorMessage,
+  getDemoAccess,
+  login,
+  loginAsDemo,
+} from '../../auth/auth';
+import type { DemoPersona, DemoPersonaOption } from '../../auth/auth';
 
 const route = useRoute();
 const router = useRouter();
 const email = ref('');
 const password = ref('');
 const loading = ref(false);
+const demoLoading = ref(false);
+const demoEnabled = ref(false);
+const demoPersonas = ref<DemoPersonaOption[]>([]);
+const selectedPersona = ref<DemoPersona | ''>('');
 const errorMessage = ref('');
 const accessMessage = ref(
   route.query.reason === 'session-expired'
@@ -29,17 +39,51 @@ async function handleSubmit() {
 
   try {
     await login(email.value, password.value);
-    const redirect =
-      typeof route.query.redirect === 'string'
-        ? route.query.redirect
-        : '/beranda';
-    await router.push(redirect);
+    await continueAfterLogin();
   } catch (error) {
     errorMessage.value = getApiErrorMessage(error);
   } finally {
     loading.value = false;
   }
 }
+
+async function continueAfterLogin() {
+  const redirect =
+    typeof route.query.redirect === 'string'
+      ? route.query.redirect
+      : '/beranda';
+  await router.push(redirect);
+}
+
+async function handleDemoLogin() {
+  if (!selectedPersona.value) {
+    errorMessage.value = 'Pilih akun demo yang ingin digunakan.';
+    return;
+  }
+
+  demoLoading.value = true;
+  errorMessage.value = '';
+
+  try {
+    await loginAsDemo(selectedPersona.value);
+    await continueAfterLogin();
+  } catch (error) {
+    errorMessage.value = getApiErrorMessage(error);
+  } finally {
+    demoLoading.value = false;
+  }
+}
+
+onMounted(async () => {
+  try {
+    const demoAccess = await getDemoAccess();
+    demoEnabled.value = demoAccess.enabled;
+    demoPersonas.value = demoAccess.personas;
+    selectedPersona.value = demoAccess.personas[0]?.persona ?? '';
+  } catch {
+    demoEnabled.value = false;
+  }
+});
 </script>
 
 <template>
@@ -72,7 +116,42 @@ async function handleSubmit() {
           <button class="shrink-0 text-lg leading-none" type="button" aria-label="Tutup pemberitahuan" @click="successMessage = ''">×</button>
         </div>
 
-        <form class="mt-7 space-y-5" @submit.prevent="handleSubmit">
+        <section v-if="demoEnabled" class="mt-6 rounded-xl border border-[#cad8e8] bg-[#f4f7fb] p-4">
+          <div class="flex items-start gap-3">
+            <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-white" aria-hidden="true">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M8 3h8M9 3v4l-4 7a4 4 0 0 0 3.5 6h7a4 4 0 0 0 3.5-6l-4-7V3" />
+                <path d="M7 14h10" />
+              </svg>
+            </span>
+            <div>
+              <h2 class="text-sm font-semibold text-primary">Coba akun demo</h2>
+              <p class="mt-1 text-xs leading-5 text-text-muted">Pilih peran untuk menjelajahi tampilan dan wewenang yang berbeda tanpa memasukkan password.</p>
+            </div>
+          </div>
+
+          <form class="mt-4 space-y-3" @submit.prevent="handleDemoLogin">
+            <div>
+              <label class="form-label" for="demo-persona">Masuk sebagai</label>
+              <select id="demo-persona" v-model="selectedPersona" class="form-input" required>
+                <option v-for="persona in demoPersonas" :key="persona.persona" :value="persona.persona">
+                  {{ persona.label }} · {{ persona.department }}
+                </option>
+              </select>
+            </div>
+            <button class="secondary-button w-full" type="submit" :disabled="demoLoading || loading">
+              {{ demoLoading ? 'Menyiapkan akun...' : 'Masuk sebagai akun demo' }}
+            </button>
+          </form>
+        </section>
+
+        <div v-if="demoEnabled" class="my-6 flex items-center gap-3 text-xs text-text-muted" aria-hidden="true">
+          <span class="h-px flex-1 bg-border"></span>
+          <span>atau masuk dengan akun Anda</span>
+          <span class="h-px flex-1 bg-border"></span>
+        </div>
+
+        <form :class="demoEnabled ? 'space-y-5' : 'mt-7 space-y-5'" @submit.prevent="handleSubmit">
           <div>
             <label class="form-label" for="email">Email</label>
             <input id="email" v-model="email" class="form-input" type="email" autocomplete="email" required placeholder="nama@perusahaan.com" />
@@ -86,7 +165,7 @@ async function handleSubmit() {
             </div>
           </div>
 
-          <button class="primary-button w-full" type="submit" :disabled="loading">
+          <button class="primary-button w-full" type="submit" :disabled="loading || demoLoading">
             {{ loading ? 'Memproses...' : 'Masuk' }}
           </button>
         </form>

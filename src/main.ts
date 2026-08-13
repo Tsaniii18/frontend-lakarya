@@ -3,6 +3,7 @@ import axios from 'axios';
 import App from './App.vue';
 import { authState, clearAuth } from './auth/auth';
 import api from './lib/api';
+import { startServerWarmup } from './lib/server-readiness';
 import router from './router';
 import './style.css';
 
@@ -31,4 +32,5 @@ api.interceptors.response.use(
   },
 );
 
+startServerWarmup();
 createApp(App).use(router).mount('#app');

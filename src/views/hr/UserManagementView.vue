@@ -15,6 +15,7 @@ interface UserItem {
   employeeNumber: string;
   name: string;
   email: string;
+  isDemo: boolean;
   accountStatus: 'MENUNGGU' | 'AKTIF' | 'DITANGGUHKAN' | 'DITOLAK';
   department: {
     id: number;
@@ -350,7 +351,12 @@ onMounted(loadUsers);
               />
               <template v-else>
                 <tr v-for="user in users" :key="user.id" class="text-text">
-                  <td class="px-4 py-4 font-medium text-primary">{{ user.name }}</td>
+                  <td class="px-4 py-4 font-medium text-primary">
+                    <div class="flex items-center gap-2">
+                      <span>{{ user.name }}</span>
+                      <span v-if="user.isDemo" class="rounded-full bg-[#e9f0f7] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-soft">Demo</span>
+                    </div>
+                  </td>
                   <td class="px-4 py-4 text-text-muted">{{ user.email }}</td>
                   <td class="px-4 py-4 text-text-muted">{{ user.employeeNumber }}</td>
                   <td class="px-4 py-4">{{ user.department.name }}</td>
@@ -359,7 +365,7 @@ onMounted(loadUsers);
                     <StatusBadge :label="statusLabel(user.accountStatus)" :tone="statusTone(user.accountStatus)" />
                   </td>
                   <td class="px-4 py-4">
-                    <div v-if="user.id !== authState.user?.id" class="flex justify-end gap-2">
+                    <div v-if="user.id !== authState.user?.id && !user.isDemo" class="flex justify-end gap-2">
                       <button
                         v-if="user.accountStatus === 'MENUNGGU'"
                         class="rounded-lg border border-success px-3 py-2 text-xs font-semibold text-success hover:bg-[#e7f2ef]"
@@ -401,7 +407,7 @@ onMounted(loadUsers);
                         Aktifkan
                       </button>
                     </div>
-                    <p v-else class="text-right text-xs text-text-muted">Akun Anda</p>
+                    <p v-else class="text-right text-xs text-text-muted">{{ user.id === authState.user?.id ? 'Akun Anda' : 'Akun demo dilindungi' }}</p>
                   </td>
                 </tr>
               </template>
